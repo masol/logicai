@@ -1,0 +1,46 @@
+{
+  "name": "lai",
+  "productName": "LogicAI",
+  "description": "结合逻辑与神经元的AI工具",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "author": "lizhutang(masol.li@gmail.com)",
+  "main": "packages/entry-point.mjs",
+  "homepage": "https://www.munao.cc",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "compile": "npm run build && electron-builder build --config electron-builder.mjs",
+    "compile:win": "npm run build && electron-builder build --win --config electron-builder.mjs",
+    "compile:mac": "npm run build && electron-builder build --mac --config electron-builder.mjs",
+    "test": "npx playwright test ./tests/e2e.spec.ts",
+    "start": "node packages/dev-mode.js",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "create-renderer": "cd packages && npm create vite@latest renderer",
+    "integrate-renderer": "npm start --workspace @app/integrate-renderer",
+    "init": "npm run create-renderer && npm run integrate-renderer && npm install"
+  },
+  "devDependencies": {
+    "@npmcli/map-workspaces": "4.0.2",
+    "@playwright/test": "1.53.1",
+    "@sveltejs/vite-plugin-svelte": "^5.1.0",
+    "@types/node": "24.0.3",
+    "electron": "36.5.0",
+    "electron-builder": "26.0.12",
+    "glob": "11.0.3",
+    "playwright": "^1.53.2"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "^1.2.66",
+    "app-builder-bin": "^5.0.0-alpha.12",
+    "remeda": "^2.23.2",
+    "wait-on": "^8.0.3"
+  },
+  "license": "MIT"
+}

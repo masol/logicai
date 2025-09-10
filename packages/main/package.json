@@ -1,0 +1,44 @@
+{
+  "name": "@app/main",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@app/preload": "^0.0.1",
+    "@app/renderer": "*",
+    "@lancedb/lancedb": "^0.21.0",
+    "@langchain/baidu-qianfan": "^0.1.0",
+    "@langchain/core": "^0.3.62",
+    "@langchain/langgraph": "^0.3.6",
+    "@langchain/openai": "^0.5.18",
+    "@langchain/textsplitters": "^0.1.0",
+    "ejs": "^3.1.10",
+    "@trpc/server": "^11.5.1",
+    "electron-trpc": "^0.7.1",
+    "electron-updater": "6.6.2",
+    "entities": "^4.5.0",
+    "graphology": "^0.26.0",
+    "langchain": "^0.3.29",
+    "llamaindex": "^0.11.12",
+    "lokijs": "^1.5.12",
+    "p-map": "^4.0.0",
+    "rxjs": "^7.8.2",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@app/electron-versions": "*",
+    "@types/ejs": "^3.1.5",
+    "@types/lokijs": "^1.5.14",
+    "electron-devtools-installer": "3.2.0",
+    "vite": "6.3.5"
+  }
+}
