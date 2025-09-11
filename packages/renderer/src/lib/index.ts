@@ -1,6 +1,6 @@
 
 import { eventBus } from "./utils/evtbus";
-import rpc from '@app/preload/router';
+import { trpc } from './trpc';
 
 export async function initLib(): Promise<void> {
   eventBus.init();
@@ -8,4 +8,4 @@ export async function initLib(): Promise<void> {
   console.log('tRPC client initialized');
 }
 
-export { rpc };
+export { trpc };

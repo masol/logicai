@@ -2,7 +2,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { eventBus } from '$lib/utils/evtbus';
-import { rpc } from '$lib';
 
 export const THEME = {
   LIGHT: 'cupcake',
@@ -16,8 +15,7 @@ const createThemeStore = () => {
 
   async function init() {
     if (browser) {
-      const savedTheme = await rpc.setting.get.query('theme');
-      const initialTheme = (savedTheme as Theme) || THEME.LIGHT;
+      const initialTheme = browser ? localStorage.getItem('theme') as Theme || THEME.LIGHT : THEME.LIGHT;
       document.documentElement.setAttribute('data-theme', initialTheme);
       set(initialTheme);
     }
@@ -40,7 +38,7 @@ const createThemeStore = () => {
         const newTheme = current === THEME.LIGHT ? THEME.DARK : THEME.LIGHT;
         if (browser) {
           document.documentElement.setAttribute('data-theme', newTheme);
-          rpc.setting.set.mutate({ name: 'theme', value: newTheme });
+          localStorage.setItem('theme', newTheme);
         }
         return newTheme;
       });

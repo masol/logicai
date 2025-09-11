@@ -21,8 +21,11 @@ export default {
     }),
     prerender: {
       entries: ["*"], // 预渲染所有路由
-      handleMissingId: "fail", // 404处理
+      handleMissingId: "ignore", // 404处理
     },
+    alias: {
+      '@api': '../main/src/api'
+    }
   },
   extensions: ['.svelte', '.svx'],
 };

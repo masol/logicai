@@ -1,6 +1,10 @@
 import {getNodeMajorVersion} from '@app/electron-versions';
 import {spawn} from 'child_process';
 import electronPath from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default /**
  * @type {import('vite').UserConfig}
@@ -18,6 +22,9 @@ export default /**
       formats: ['es'],
     },
     rollupOptions: {
+      external: [
+        'electron',
+      ],
       output: {
         entryFileNames: '[name].js',
       },
@@ -26,8 +33,13 @@ export default /**
     reportCompressedSize: false,
   },
   plugins: [
-    handleHotReload(),
+    // handleHotReload(),
   ],
+ resolve: {
+    alias: {
+      '@app/main': path.resolve(__dirname, 'src'),
+    },
+  },
 });
 
 
@@ -53,7 +65,7 @@ function handleHotReload() {
 
       const rendererWatchServerProvider = config.plugins.find(p => p.name === '@app/renderer-watch-server-provider');
       if (!rendererWatchServerProvider) {
-        throw new Error('Renderer watch server provider not found');
+        return;
       }
 
       rendererWatchServer = rendererWatchServerProvider.api.provideRendererWatchServer();

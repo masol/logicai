@@ -1,5 +1,5 @@
 import { spawn } from "child_process";
-import { build } from "vite";
+import { build, resolveConfig } from "vite";
 import path from "path";
 import net from "net";
 
@@ -197,11 +197,9 @@ async function buildOtherPackages() {
   for (const pkg of packagesToStart) {
     try {
       console.log(`正在构建 ${pkg}...`);
-      await build({
-        mode,
-        root: path.resolve(pkg),
-        plugins: [rendererWatchServerProvider],
-      });
+
+      // 使用简化的配置进行构建，因为它会加载各自的 vite.config.js
+      await build({ root: path.resolve(pkg), mode });
       console.log(`${pkg} 构建完成`);
     } catch (error) {
       console.error(`构建 ${pkg} 失败:`, error);

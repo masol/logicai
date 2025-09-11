@@ -42,6 +42,7 @@ export default defineConfig({
     alias: {
       // 使用别名来管理路径
       "$assets": path.resolve("./src/assets"),
+      "@api": path.resolve("../main/src/api"),
     },
   },
 });

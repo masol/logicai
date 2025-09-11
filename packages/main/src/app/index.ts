@@ -1,4 +1,4 @@
-
+import { initTRPC } from '../api/index.js';
 import { AppContext } from "./context.js";
 // import { setupTRPCHandler } from "../api/router.js";
 
@@ -18,5 +18,7 @@ export class LaiApp {
         mainWindow.destroy();
       });
     });
+    // initTRPC(mainWindow);
   }
+
 }

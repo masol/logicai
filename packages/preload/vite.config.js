@@ -1,34 +1,47 @@
-import {resolveModuleExportNames} from 'mlly';
-import {getChromeMajorVersion} from '@app/electron-versions';
+import { resolveModuleExportNames } from 'mlly';
+import { getChromeMajorVersion } from '@app/electron-versions';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default /**
  * @type {import('vite').UserConfig}
  * @see https://vitejs.dev/config/
  */
-({
-  build: {
-    ssr: true,
-    sourcemap: 'inline',
-    outDir: 'dist',
-    target: `chrome${getChromeMajorVersion()}`,
-    assetsDir: '.',
-    lib: {
-      entry: ['src/exposed.ts', 'virtual:browser.js'],
+  ({
+    resolve: {
+      alias: {
+        'electron-trpc/preload': path.resolve(__dirname, '../../node_modules/electron-trpc/dist/renderer.mjs'),
+      },
     },
-    rollupOptions: {
-      output: [
-        {
-          // ESM preload scripts must have the .mjs extension
-          // https://www.electronjs.org/docs/latest/tutorial/esm#esm-preload-scripts-must-have-the-mjs-extension
-          entryFileNames: '[name].mjs',
-        },
-      ],
+    build: {
+      ssr: true,
+      sourcemap: 'inline',
+      outDir: 'dist',
+      target: `chrome${getChromeMajorVersion()}`,
+      assetsDir: '.',
+      lib: {
+        entry: ['src/exposed.ts', 'virtual:browser.js'],
+      },
+      rollupOptions: {
+        external: [
+          'electron',
+          'electron-trpc',
+        ],
+        output: [
+          {
+            // ESM preload scripts must have the .mjs extension
+            // https://www.electronjs.org/docs/latest/tutorial/esm#esm-preload-scripts-must-have-the-mjs-extension
+            entryFileNames: '[name].mjs',
+          },
+        ],
+      },
+      emptyOutDir: true,
+      reportCompressedSize: false,
     },
-    emptyOutDir: true,
-    reportCompressedSize: false,
-  },
-  plugins: [mockExposed(), handleHotReload()],
-});
+    plugins: [mockExposed()],
+  });
 
 
 /**
@@ -96,7 +109,7 @@ function handleHotReload() {
 
       const rendererWatchServerProvider = config.plugins.find(p => p.name === '@app/renderer-watch-server-provider');
       if (!rendererWatchServerProvider) {
-        throw new Error('Renderer watch server provider not found');
+        return;
       }
 
       rendererWatchServer = rendererWatchServerProvider.api.provideRendererWatchServer();
