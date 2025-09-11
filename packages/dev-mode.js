@@ -1,5 +1,6 @@
 import { spawn } from "child_process";
-import { build, resolveConfig } from "vite";
+import { build } from 'vite';
+import readline from 'readline';
 import path from "path";
 import net from "net";
 
@@ -8,7 +9,9 @@ process.env.NODE_ENV = mode;
 process.env.MODE = mode;
 
 const FIXED_PORT = 5173;
-const BASE_URL = `http://localhost:${FIXED_PORT}`;
+let actualPort = FIXED_PORT;
+let BASE_URL = `http://localhost:${actualPort}`;
+let mockRendererWatchServer;
 
 console.log("正在启动 renderer 开发服务器...");
 
@@ -22,7 +25,6 @@ const rendererProcess = spawn("npm", ["run", "dev"], {
 });
 
 let serverReady = false;
-let mockRendererWatchServer = null;
 let isShuttingDown = false;
 
 // 端口检测函数
@@ -96,7 +98,20 @@ async function waitForProcessExit(pid, maxWaitTime = 30000) {
 
 // 输出进程日志
 rendererProcess.stdout.on("data", (data) => {
-  process.stdout.write(`[Renderer] ${data}`);
+  const message = data.toString();
+  process.stdout.write(`[Renderer] ${message}`);
+
+  if (!serverReady) {
+    const portMatch = message.match(/Local:\s+http:\/\/localhost:(\d+)/);
+    if (portMatch) {
+      actualPort = parseInt(portMatch[1], 10);
+      BASE_URL = `http://localhost:${actualPort}`;
+      serverReady = true;
+      console.log(`\nDetected server on port ${actualPort}`);
+      setupMockServer();
+      buildOtherPackages().catch(console.error);
+    }
+  }
 });
 
 rendererProcess.stderr.on("data", (data) => {
@@ -118,41 +133,6 @@ rendererProcess.on("error", (error) => {
   process.exit(1);
 });
 
-// 检查固定端口是否启动
-async function waitForServerReady() {
-  const maxAttempts = 60;
-  let attempts = 0;
-
-  console.log(`等待端口 ${FIXED_PORT} 启动...`);
-
-  while (attempts < maxAttempts && !serverReady) {
-    attempts++;
-
-    const isOpen = await checkPortOpen(FIXED_PORT);
-    if (isOpen) {
-      serverReady = true;
-      console.log(`\n端口 ${FIXED_PORT} 已启动`);
-      setupMockServer();
-      buildOtherPackages().catch(console.error);
-      return;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    if (attempts % 10 === 0) {
-      console.log(`等待服务器启动... (${attempts}/${maxAttempts})`);
-    }
-  }
-
-  if (!serverReady) {
-    console.error(`等待端口 ${FIXED_PORT} 启动超时`);
-    await cleanup();
-    process.exit(1);
-  }
-}
-
-// 启动端口检测
-waitForServerReady();
 
 function setupMockServer() {
   mockRendererWatchServer = {
@@ -162,7 +142,7 @@ function setupMockServer() {
     },
     config: {
       server: {
-        port: FIXED_PORT,
+        port: actualPort,
         host: "localhost",
       },
     },
@@ -182,14 +162,6 @@ function setupMockServer() {
   console.log("开始构建其他包...\n");
 }
 
-const rendererWatchServerProvider = {
-  name: "@app/renderer-watch-server-provider",
-  api: {
-    provideRendererWatchServer() {
-      return mockRendererWatchServer;
-    },
-  },
-};
 
 async function buildOtherPackages() {
   const packagesToStart = ["packages/preload", "packages/main"];
@@ -247,7 +219,7 @@ async function cleanup() {
       }
 
       // 等待端口关闭
-      await waitForPortClosed(FIXED_PORT, 10000);
+      await waitForPortClosed(actualPort, 10000);
 
       // 最终检查进程是否真正退出
       if (isProcessRunning(pid)) {
@@ -291,7 +263,7 @@ process.on("uncaughtException", async (error) => {
   process.exit(1);
 });
 
-process.on("unhandledRejection", async (reason, promise) => {
+process.on("unhandledRejection", async (reason) => {
   console.error("未处理的 Promise 拒绝:", reason);
   await cleanup();
   process.exit(1);
@@ -299,7 +271,7 @@ process.on("unhandledRejection", async (reason, promise) => {
 
 // Windows 特有的信号处理
 if (process.platform === "win32") {
-  const rl = require("readline").createInterface({
+    const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
