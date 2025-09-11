@@ -97,6 +97,7 @@ class WindowManager implements AppModule {
         webviewTag: false, // The webview tag is not recommended. Consider alternatives like an iframe or Electron's BrowserView. @see https://www.electronjs.org/docs/latest/api/webview-tag#warning
         preload: this.#preload.path,
       },
+      autoHideMenuBar: true, // 显示默认菜单栏
     });
 
     const laiapp = new LaiApp(app, browserWindow);
