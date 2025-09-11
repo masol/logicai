@@ -33,7 +33,7 @@ export default /**
     reportCompressedSize: false,
   },
   plugins: [
-    // handleHotReload(),
+    handleHotReload(),
   ],
  resolve: {
     alias: {
