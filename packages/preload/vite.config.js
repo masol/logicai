@@ -3,18 +3,11 @@ import { getChromeMajorVersion } from '@app/electron-versions';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 export default /**
  * @type {import('vite').UserConfig}
  * @see https://vitejs.dev/config/
  */
   ({
-    resolve: {
-      alias: {
-        'electron-trpc/preload': path.resolve(__dirname, '../../node_modules/electron-trpc/dist/renderer.mjs'),
-      },
-    },
     build: {
       ssr: true,
       sourcemap: 'inline',
@@ -25,10 +18,6 @@ export default /**
         entry: ['src/exposed.ts', 'virtual:browser.js'],
       },
       rollupOptions: {
-        external: [
-          'electron',
-          'electron-trpc',
-        ],
         output: [
           {
             // ESM preload scripts must have the .mjs extension
@@ -40,7 +29,7 @@ export default /**
       emptyOutDir: true,
       reportCompressedSize: false,
     },
-    plugins: [mockExposed()],
+    plugins: [mockExposed(), handleHotReload()],
   });
 
 

@@ -1,6 +1,7 @@
-import { BrowserWindow } from 'electron';
+import SysRoute from './sys.js'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function initTRPC(mainWindow: BrowserWindow) {
-    //  NOOP
-}
+export const appRouter = {
+    //   bots: BotsRoute,
+    //   sys: SysRoute,
+    sys: SysRoute
+};

@@ -1,3 +1,4 @@
+import { rpc } from "@app/preload";
 // lib/events/bus.ts
 
 /**
@@ -13,7 +14,7 @@ class EventBus {
 	private emitter = mitt<Events>();
 	private initialized = false;
 
-	private constructor() {}
+	private constructor() { }
 
 	static getInstance() {
 		if (!this.instance) {
@@ -34,6 +35,14 @@ class EventBus {
 				oldValue: e.oldValue
 			});
 		});
+
+		// 创建一个包装函数来调用 eventBus
+		const emitEventBusEvent = (name: string, data: Record<string, any>) => {
+			EventBus.getInstance().emit(name, data);
+		};
+
+		rpc.setEmit(emitEventBusEvent);
+
 
 		this.initialized = true;
 	}
@@ -102,4 +111,6 @@ class EventBus {
 	}
 }
 
+
 export const eventBus = EventBus.getInstance();
+

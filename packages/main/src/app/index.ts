@@ -1,5 +1,7 @@
-import { initTRPC } from '../api/index.js';
 import { AppContext } from "./context.js";
+import { ipcMain } from "electron";
+import { applyRoute } from "./router.js";
+
 // import { setupTRPCHandler } from "../api/router.js";
 
 export class LaiApp {
@@ -17,6 +19,10 @@ export class LaiApp {
       this.#context.db.close().finally(() => {
         mainWindow.destroy();
       });
+    });
+
+    ipcMain.handle("lai-rpc", (event, reqPath, ...args) => {
+      return applyRoute(this.#context, reqPath, ...args);
     });
     // initTRPC(mainWindow);
   }

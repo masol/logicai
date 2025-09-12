@@ -14,10 +14,6 @@
     "./exposed.mjs": {
       "types": "./src/exposed.d.ts",
       "default": "./dist/exposed.mjs"
-    },
-    "./router": {
-      "types": "./src/router.ts",
-      "default": "./dist/router.mjs"
     }
   },
   "devDependencies": {

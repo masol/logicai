@@ -60,7 +60,7 @@ export class LokiDatabase {
   private db: Loki;
   private dbPath: string;
 
-  constructor(config: DatabaseConfig) {
+  constructor(config: DatabaseConfig, cb: () => void) {
     this.dbPath = this.resolveDatabasePath(config.dbPath);
 
     // 确保数据库目录存在
@@ -72,6 +72,9 @@ export class LokiDatabase {
       autoload: true,
       autoloadCallback: () => {
         console.log(`Database loaded from ${this.dbPath}`);
+        if (cb) {
+          cb();
+        }
       },
       autosave: true,
       autosaveInterval: config.autoSaveInterval || 9000,

@@ -1,9 +1,11 @@
 import { LokiDatabase } from "./loki.js";
 import path from "node:path";
-import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
-import { constants } from 'node:fs';
 
 export class AppContext {
+  #initstate = {
+    db: false
+  }
+
   readonly app: Electron.App;
   readonly win: Electron.BrowserWindow;
   readonly db: LokiDatabase;
@@ -13,11 +15,26 @@ export class AppContext {
     this.app = app;
     this.win = win;
     const userData = app.getPath("userData");
-    const dbPath = path.join(userData, "loki", "database.json");
+    const dbPath = path.join(userData, "store", "data.json");
     console.log("dbPath=", dbPath);
-    this.db = new LokiDatabase({
-      dbPath,
-    });
+    const that = this;
+    this.db = new LokiDatabase(
+      { dbPath },
+      () => {
+        this.onInitStep("db");
+      }
+    );
+  }
+
+  get inited(): boolean {
+    return this.#initstate.db
+  }
+
+  private onInitStep(name: "db") {
+    this.#initstate[name] = true;
+    if (this.#initstate.db) {
+      this.emit("inited", { inited: true })
+    }
   }
 
   getFileName(prefix = "result", pathName = ""): string {
@@ -27,90 +44,48 @@ export class AppContext {
     return path.join(userData, pathName, `${prefix}-${timestamp}.md`);
   }
 
-  // 指定id的本体目录．
-  ontologyPath(id: string, subDir = "data"): string {
+  // 本体目录．
+  ontologyPath(): string {
     const userData = this.app.getPath("userData");
-    return path.join(userData, 'ontology', id, subDir);
+    return path.join(userData, 'store', 'ontology');
   }
 
-  /**
-   * 检查文件是否存在，如果存在则读取并返回JSON内容，否则返回false
-   * @param id bid
-   * @returns JSON对象或false
-   */
-  async readJson(id: string): Promise<Record<string, any> | false> {
-    const filePath = this.ontologyPath(id);
-    try {
-      // 检查文件是否存在
-      await access(filePath, constants.F_OK);
-
-      // 读取文件内容
-      const fileContent = await readFile(filePath, 'utf8');
-
-      // 解析JSON
-      const jsonData = JSON.parse(fileContent);
-
-      return jsonData;
-    } catch (error) {
-      // 如果是文件不存在的错误，返回空字符串
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return false;
-      }
-
-      console.error(`读取文件失败: ${filePath}`, error);
-      return false;
+  // 发送事件到渲染进程
+  emit(eventName: string, eventData: Record<string, any> = {}) {
+    if (!this.win || this.win.isDestroyed()) {
+      console.warn('主窗口不可用，无法发送事件:', eventName);
+      return;
     }
-  }
 
-  /**
-   * 将JSON对象写入到指定路径的文件中
-   * @param filePath 文件的完整路径
-   * @param jsonData 要写入的JSON数据
-   * @param prettyFormat 是否格式化JSON（默认为true）
-   * @returns Promise<是否写入成功>
-   */
-  async writeJson(id: string, jsonData: any, prettyFormat: boolean = true): Promise<boolean> {
-
-    const filePath = this.ontologyPath(id)
-    // const prettyFormat = true;
     try {
-      // 确保目录存在
-      const dirPath = path.dirname(filePath);
-
-      try {
-        await access(dirPath, constants.F_OK);
-      } catch {
-        // 目录不存在，创建目录
-        await mkdir(dirPath, { recursive: true });
-      }
-
-      // 将JSON对象转换为字符串
-      const jsonString = prettyFormat
-        ? JSON.stringify(jsonData, null, 2)
-        : JSON.stringify(jsonData);
-
-      // 写入文件
-      await writeFile(filePath, jsonString, 'utf8');
-
-      return true;
+      this.win.webContents.send('eventbus', eventName, eventData);
+      // console.log(`已发送事件: ${eventName}`, eventData);
     } catch (error) {
-      console.error(`写入文件失败: ${filePath}`, error);
-      return false;
+      console.error('发送事件时出错:', eventName, error);
     }
   }
 
 
-  ensureDB(id: string): LokiDatabase {
+  async ensureDB(id: string): Promise<LokiDatabase> {
     let db = this.#subdb.get(id)
     if (db) {
       return db;
     }
     const userData = this.app.getPath("userData");
-    const dbPath = path.join(userData, "loki", `${id}.json`);
-    db = new LokiDatabase({ dbPath })
-    this.#subdb.set(id, db);
-    return db;
+    const dbPath = path.join(userData, "store", `${id}.json`);
+    return new Promise((resolve, reject) => {
+      db = new LokiDatabase({ dbPath }, () => {
+        if (db) {
+          this.#subdb.set(id, db);
+          resolve(db);
+          return;
+        }
+
+        reject(false);
+      });
+    });
   }
+
   async closeDB(id: string): Promise<boolean> {
     const db = this.#subdb.get(id);
     if (!db) {
