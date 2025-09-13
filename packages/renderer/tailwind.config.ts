@@ -41,7 +41,6 @@ const getPackagePath = (packageName: string): string => {
 //   }
 // }
 
-console.log("getPackagePath", `${getPackagePath("daisyui")}/dist/**/*.js`);
 
 export default {
   darkMode: "class",
