@@ -68,7 +68,7 @@
   }
 
   function goHome() {
-    goto("/");
+    goto("/main/commander");
     closeAllMenus();
   }
 
@@ -148,7 +148,6 @@
 >
   <!-- 主导航栏 -->
   <div class="navbar-start min-w-0">
-    <!-- 品牌Logo -->
     <button
       onclick={goHome}
       class="btn btn-ghost p-2 mr-4 hover:scale-105 transition-all duration-300 group"
@@ -166,7 +165,7 @@
         <span
           class="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent hidden sm:block"
         >
-          品牌名
+          指挥官
         </span>
       </div>
     </button>
@@ -267,10 +266,9 @@
         >
           <div class="card-body">
             <h3 class="card-title text-sm">设置</h3>
-
+<!-- 
             <div class="divider my-1"></div>
 
-            <!-- 主题切换 -->
             <button
               onclick={handleThemeToggle}
               onkeydown={(e) => handleKeyDown(e, handleThemeToggle)}
@@ -293,7 +291,7 @@
                 readonly
                 tabindex="-1"
               />
-            </button>
+            </button> -->
 
             <div class="divider my-1"></div>
 
@@ -403,7 +401,7 @@
         class="flex items-center space-x-3 p-4 border-b border-base-content/10 mb-4"
       >
         <IconChat class="w-8 h-8 text-primary" />
-        <span class="text-xl font-bold">品牌名</span>
+        <span class="text-xl font-bold">指挥官</span>
       </div>
 
       <!-- 主菜单项 -->

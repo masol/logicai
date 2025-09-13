@@ -1,7 +1,5 @@
 import type { Config } from "tailwindcss";
 
-// import { fileURLToPath } from 'url'
-import { resolve } from "path";
 import daisyui from "daisyui";
 import typography from "@tailwindcss/typography";
 import forms from "@tailwindcss/forms";
@@ -9,45 +7,13 @@ import aspectRatio from "@tailwindcss/aspect-ratio";
 import containerQueries from "@tailwindcss/container-queries";
 import animatedPlugin from "tailwindcss-animated";
 
-// 辅助函数：获取包的路径
-const getPackagePath = (packageName: string): string => {
-  try {
-    return resolve(require.resolve(packageName)).replace(/\/([^/]+)$/, "");
-  } catch (e) {
-    void e;
-    console.warn(`Warning: Could not resolve package path for ${packageName}`);
-    return "";
-  }
-};
 
-// ESM环境下的包路径解析
-// function getPackagePath(packageName: string): string {
-//   try {
-//     // const importMetaUrl = import.meta.url
-//     // const __filename = fileURLToPath(importMetaUrl)
-//     // const __dirname = dirname(__filename)
-
-//     // 使用import.meta.resolve (需要Node.js 16+)
-//     const packagePath = import.meta.resolve(packageName)
-
-//     console.log("packagePath",packagePath)
-//     if (!packagePath) throw new Error(`Cannot find package ${packageName}`)
-
-//     return fileURLToPath(new URL('.', packagePath))
-//   } catch (e) {
-//     void e;
-//     console.warn(`Warning: Could not resolve package path for ${packageName}`)
-//     return ''
-//   }
-// }
 
 
 export default {
-  darkMode: "class",
+  // darkMode: "class",
   content: [
     "./src/**/*.{html,js,svelte,ts}",
-    `${getPackagePath("daisyui")}/dist/**/*.js`,
-    `${getPackagePath("daisyui")}/**/*.{js,ts}`,
   ],
   theme: {
     extend: {
@@ -117,7 +83,10 @@ export default {
     animatedPlugin,
   ],
   daisyui: {
-    themes: ["cupcake", "dim"], //设置为true,以包含全部主题。目前只包含了两个选择的。
+    themes: [
+      "cupcake",
+      "dim"
+    ],    //设置为true,以包含全部主题。目前只包含了两个选择的。
     base: true,
     styled: true,
     utils: true,
