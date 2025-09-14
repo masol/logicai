@@ -5,7 +5,7 @@
 </script>
 
 <Header></Header>
-<div class="min-h-screen bg-base-100">
+<div class="bg-base-100">
   <slot></slot>
 </div>
 

@@ -413,7 +413,7 @@
               class="flex items-center gap-3 text-sm font-medium text-gray-900 dark:text-white"
             >
               <IconModel />
-              模型
+              直觉(神经元)
             </div>
             <button
               onclick={() => (showAddModal = true)}
@@ -543,7 +543,7 @@
               class="flex items-center gap-3 text-sm font-medium text-gray-900 dark:text-white"
             >
               <IconMcp />
-              MCP
+              肢体(MCP)
               <span
                 class="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded-full"
               >
