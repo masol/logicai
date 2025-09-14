@@ -9,7 +9,7 @@ import IconVCA from '~icons/mdi/video-input-component'
 
 // 模型分类及图标
 export const modelCategories = {
-    llm: { name: "大语言模型", icon: IconText },
+    llm: { name: "语言模型", icon: IconText },
     asr: { name: "语音识别", icon: IconASR },
     imgrecog: { name: "图像识别", icon: IconImgRecog },
     vca: { name: "视频分析", icon: IconVCA },

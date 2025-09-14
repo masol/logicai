@@ -7,6 +7,7 @@
     breadcrumbStore,
     type BreadcrumbItem,
   } from "$lib/stores/breadcrumb.svelte";
+  import { androidNameStore } from "$lib/stores/shared.svelte";
   import { fly, scale } from "svelte/transition";
   import { flip } from "svelte/animate";
   import IconChat from "~icons/mdi/chat-outline";
@@ -171,7 +172,7 @@
         <span
           class="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent hidden sm:block"
         >
-          指挥官
+          {androidNameStore.value}
         </span>
       </div>
     </button>

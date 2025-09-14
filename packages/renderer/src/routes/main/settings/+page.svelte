@@ -19,6 +19,7 @@
   import IconDesktop from "~icons/mdi/desktop-classic";
   import { modelCategories, presetModels, languages } from "./modes.const";
   import { rpc } from "@app/preload";
+  import { androidNameStore } from "$lib/stores/shared.svelte";
 
   // 加载状态
   let isLoading = $state(true);
@@ -29,7 +30,7 @@
 
   // 一般设置
   let currentLanguage = $state("zh-CN");
-  let androidName = $state("指挥官");
+  let localAndroidName = $state("指挥官");
   let androidGoal = $state("忠实执行使用者命令");
   let showLanguageHelp = $state(false);
   let showNameHelp = $state(false);
@@ -96,7 +97,7 @@
     models = values[0] || {};
     currentLanguage = (values[1] || "zh-CN") as string;
     defaultEmbeddingModel = (values[2] || "") as string;
-    androidName = (values[3] || "指挥官") as string;
+    localAndroidName = (values[3] || "指挥官") as string;
     androidGoal = (values[4] || "忠实执行使用者指令") as string;
     mcpServices = values[5] || [];
 
@@ -119,6 +120,7 @@
   async function saveAndroidName(name) {
     console.log("保存人造人名称:", name);
     await rpc.sys.set("androidName", $state.snapshot(name));
+    androidNameStore.set(name);
   }
 
   async function saveAndroidGoal(goal) {
@@ -289,7 +291,7 @@
 
   function onAndroidNameChange() {
     if (!isLoading) {
-      saveAndroidName(androidName);
+      saveAndroidName(localAndroidName);
     }
   }
 
@@ -719,7 +721,7 @@
                     </span>
                     <input
                       type="text"
-                      bind:value={androidName}
+                      bind:value={localAndroidName}
                       onchange={onAndroidNameChange}
                       class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-w-[200px]"
                       placeholder="指挥官"

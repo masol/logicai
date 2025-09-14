@@ -24,7 +24,7 @@
     progress.set(100);
 
     // 显示成功状态一段时间再跳转
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, 90));
 
     console.log("System initialized, navigating to commander!");
     goto("/main/commander");
