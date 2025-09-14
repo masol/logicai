@@ -11,7 +11,7 @@ import animatedPlugin from "tailwindcss-animated";
 
 
 export default {
-  // darkMode: "class",
+  darkMode: "class",
   content: [
     "./src/**/*.{html,js,svelte,ts}",
   ],

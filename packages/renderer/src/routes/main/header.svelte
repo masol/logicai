@@ -7,7 +7,6 @@
     breadcrumbStore,
     type BreadcrumbItem,
   } from "$lib/stores/breadcrumb.svelte";
-  import { theme, THEME } from "$lib/stores/theme";
   import { fly, scale } from "svelte/transition";
   import { flip } from "svelte/animate";
   import IconChat from "~icons/mdi/chat-outline";
@@ -21,16 +20,19 @@
   import IconSettings from "~icons/mdi/cog-outline";
   import IconThemeLight from "~icons/mdi/white-balance-sunny";
   import IconThemeDark from "~icons/mdi/weather-night";
+  import { mode, toggleMode, setMode } from "mode-watcher";
 
   let isMenuOpen = $state(false);
   let isScrolled = $state(false);
   let isSettingsOpen = $state(false);
   let headerElement = $state<HTMLElement>();
 
-  // 计算动态类名
+  // 计算动态类名 - 支持dark/light主题
   const headerClasses = $derived(
-    `navbar fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-base-300 transition-all duration-300 ease-out ${
-      isScrolled ? "bg-base-100/95 shadow-lg" : "bg-base-100/85 shadow-sm"
+    `navbar fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-border transition-all duration-300 ease-out ${
+      isScrolled
+        ? "bg-background/95 dark:bg-background/95 shadow-lg dark:shadow-xl"
+        : "bg-background/85 dark:bg-background/85 shadow-sm dark:shadow-md"
     }`,
   );
 
@@ -91,7 +93,9 @@
   }
 
   function handleThemeToggle() {
-    theme.toggle();
+    toggleMode();
+    // console.log("mode.current=", mode.current);
+    localStorage.setItem("mode-watcher-mode", mode.current);
   }
 
   function handleSystemSettings() {
@@ -152,7 +156,7 @@
   <div class="navbar-start min-w-0">
     <button
       onclick={goHome}
-      class="btn btn-ghost p-2 mr-4 hover:scale-105 transition-all duration-300 group"
+      class="btn btn-ghost p-2 mr-4 hover:scale-105 transition-all duration-300 group text-foreground hover:text-primary"
       aria-label="返回首页"
     >
       <div class="flex items-center space-x-2">
@@ -183,18 +187,20 @@
               out:scale={{ duration: 200 }}
             >
               {#if index === breadcrumbs.length - 1}
-                <span class="badge badge-outline badge-lg font-medium">
+                <span
+                  class="badge badge-outline badge-lg font-medium text-foreground border-border"
+                >
                   {crumb.label}
                 </span>
               {:else if crumb.href}
                 <button
                   onclick={() => handleBreadcrumbClick(crumb.href)}
-                  class="btn btn-ghost btn-sm hover:scale-105 transition-all duration-200"
+                  class="btn btn-ghost btn-sm hover:scale-105 transition-all duration-200 text-muted-foreground hover:text-foreground"
                 >
                   {crumb.label}
                 </button>
               {:else}
-                <span class="text-base-content/70">
+                <span class="text-muted-foreground">
                   {crumb.label}
                 </span>
               {/if}
@@ -214,8 +220,9 @@
           <li>
             <a
               href={item.href}
-              class="btn btn-ghost btn-sm flex items-center space-x-2 hover:scale-105 focus:scale-105 transition-all duration-300"
-              class:btn-primary={isActive(item.href)}
+              class={`btn btn-ghost btn-sm flex items-center space-x-2 hover:scale-105 focus:scale-105 transition-all duration-300 text-foreground hover:text-primary ${
+                isActive(item.href) ? "btn-primary text-primary-foreground" : ""
+              }`}
               aria-current={isActive(item.href) ? "page" : undefined}
             >
               {#if item.icon === IconChat}
@@ -241,8 +248,9 @@
       <button
         onclick={(e) => toggleSettings(e)}
         onkeydown={(e) => handleKeyDown(e, () => toggleSettings())}
-        class="btn btn-ghost btn-circle hover:scale-110 transition-all duration-300"
-        class:btn-active={isSettingsOpen}
+        class={`btn btn-ghost btn-circle hover:scale-110 transition-all duration-300 text-foreground hover:text-primary ${
+          isSettingsOpen ? "btn-active bg-muted" : ""
+        }`}
         aria-label="设置菜单"
         aria-expanded={isSettingsOpen}
         aria-haspopup="true"
@@ -256,57 +264,55 @@
 
       {#if isSettingsOpen}
         <div
-          class="absolute right-0 top-full mt-2 card card-compact w-64 p-2 shadow-xl bg-base-100 border border-base-300 z-50"
+          class="absolute right-0 top-full mt-2 w-64 p-4 shadow-2xl bg-white dark:bg-gray-800 border border-border rounded-lg z-50"
           in:scale={{ duration: 200, start: 0.9 }}
           out:scale={{ duration: 150, start: 0.9 }}
           role="menu"
           aria-labelledby="settings-button"
         >
-          <div class="card-body">
-            <h3 class="card-title text-sm">设置</h3>
+          <h3 class="text-sm font-semibold text-foreground mb-3">设置</h3>
 
-            <div class="divider my-1"></div>
+          <div class="border-t border-border my-2"></div>
 
-            <button
-              onclick={handleThemeToggle}
-              onkeydown={(e) => handleKeyDown(e, handleThemeToggle)}
-              class="btn btn-ghost justify-start space-x-3 w-full hover:bg-primary/10 transition-all duration-200"
-              role="menuitem"
-            >
-              <div class="flex items-center space-x-3 flex-1">
-                {#if $theme === THEME.DARK}
-                  <IconThemeDark class="w-4 h-4 text-warning" />
-                  <span class="text-sm">夜晚模式</span>
-                {:else}
-                  <IconThemeLight class="w-4 h-4 text-warning" />
-                  <span class="text-sm">白天模式</span>
-                {/if}
-              </div>
-              <input
-                type="checkbox"
-                class="toggle toggle-primary toggle-sm pointer-events-none"
-                checked={$theme === THEME.DARK}
-                readonly
-                tabindex="-1"
-              />
-            </button>
+          <button
+            onclick={handleThemeToggle}
+            onkeydown={(e) => handleKeyDown(e, handleThemeToggle)}
+            class="flex items-center justify-between w-full p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+            role="menuitem"
+          >
+            <div class="flex items-center space-x-3">
+              {#if mode.current === "light"}
+                <IconThemeDark class="w-4 h-4 text-amber-600" />
+                <span class="text-sm text-foreground">夜晚模式</span>
+              {:else}
+                <IconThemeLight class="w-4 h-4 text-amber-600" />
+                <span class="text-sm text-foreground">白天模式</span>
+              {/if}
+            </div>
+            <input
+              type="checkbox"
+              class="toggle toggle-primary toggle-sm pointer-events-none"
+              checked={mode.current === "light"}
+              readonly
+              tabindex="-1"
+            />
+          </button>
 
-            <div class="divider my-1"></div>
+          <div class="border-t border-border my-2"></div>
 
-            <!-- 系统设置 -->
-            <button
-              onclick={handleSystemSettings}
-              onkeydown={(e) => handleKeyDown(e, handleSystemSettings)}
-              class="btn btn-ghost justify-between w-full hover:bg-primary/10 transition-all duration-200"
-              role="menuitem"
-            >
-              <div class="flex items-center space-x-3">
-                <IconCog class="w-4 h-4" />
-                <span class="text-sm">系统设置</span>
-              </div>
-              <IconChevronRight class="w-3 h-3 opacity-50" />
-            </button>
-          </div>
+          <!-- 系统设置 -->
+          <button
+            onclick={handleSystemSettings}
+            onkeydown={(e) => handleKeyDown(e, handleSystemSettings)}
+            class="flex items-center justify-between w-full p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+            role="menuitem"
+          >
+            <div class="flex items-center space-x-3">
+              <IconCog class="w-4 h-4 text-muted-foreground" />
+              <span class="text-sm text-foreground">系统设置</span>
+            </div>
+            <IconChevronRight class="w-3 h-3 text-muted-foreground" />
+          </button>
         </div>
       {/if}
     </div>
@@ -314,7 +320,7 @@
     <!-- 移动端菜单按钮 -->
     <button
       onclick={toggleMenu}
-      class="btn btn-ghost btn-circle lg:hidden hover:scale-110 transition-all duration-300"
+      class="btn btn-ghost btn-circle lg:hidden hover:scale-110 transition-all duration-300 text-foreground hover:text-primary"
       aria-label={isMenuOpen ? "关闭菜单" : "打开菜单"}
       aria-expanded={isMenuOpen}
     >
@@ -337,7 +343,7 @@
 <!-- 移动端面包屑 -->
 {#if breadcrumbsLength > 0}
   <div
-    class="lg:hidden px-4 py-3 bg-base-200/80 backdrop-blur border-b border-base-300 fixed top-16 left-0 right-0 z-40"
+    class="lg:hidden px-4 py-3 bg-muted/80 dark:bg-muted/80 backdrop-blur border-b border-border fixed top-16 left-0 right-0 z-40"
     in:fly={{ y: -20, duration: 400 }}
     out:fly={{ y: -20, duration: 300 }}
   >
@@ -351,18 +357,20 @@
             class="whitespace-nowrap"
           >
             {#if index === breadcrumbs.length - 1}
-              <span class="badge badge-primary badge-sm">
+              <span
+                class="badge badge-primary badge-sm text-primary-foreground"
+              >
                 {crumb.label}
               </span>
             {:else if crumb.href}
               <button
                 onclick={() => handleBreadcrumbClick(crumb.href)}
-                class="btn btn-ghost btn-xs hover:btn-primary transition-all duration-200"
+                class="btn btn-ghost btn-xs hover:btn-primary hover:text-primary-foreground transition-all duration-200 text-muted-foreground"
               >
                 {crumb.label}
               </button>
             {:else}
-              <span class="text-base-content/70 text-xs">
+              <span class="text-muted-foreground text-xs">
                 {crumb.label}
               </span>
             {/if}
@@ -372,121 +380,6 @@
     </div>
   </div>
 {/if}
-
-<!-- 移动端菜单 -->
-<div
-  class="drawer lg:hidden fixed top-0 left-0 w-full h-full z-40 pointer-events-none"
-  class:pointer-events-auto={isMenuOpen}
->
-  <input
-    id="mobile-menu-drawer"
-    type="checkbox"
-    class="drawer-toggle"
-    bind:checked={isMenuOpen}
-  />
-
-  <div class="drawer-side">
-    <button
-      class="drawer-overlay bg-black/50"
-      onclick={closeAllMenus}
-      onkeydown={(e) => handleKeyDown(e, closeAllMenus)}
-      aria-label="关闭菜单"
-    ></button>
-
-    <div class="menu p-4 w-80 min-h-full bg-base-100 space-y-2">
-      <!-- Logo区域 -->
-      <div
-        class="flex items-center space-x-3 p-4 border-b border-base-300 mb-4"
-      >
-        <IconChat class="w-8 h-8 text-primary" />
-        <span class="text-xl font-bold">指挥官</span>
-      </div>
-
-      <!-- 主菜单项 -->
-      {#each menuItems as item, index (item.href)}
-        <li
-          class={`transform transition-all duration-300 ${
-            isMenuOpen
-              ? "translate-x-0 opacity-100"
-              : "-translate-x-full opacity-0"
-          }`}
-          style="transition-delay: {index * 50}ms"
-        >
-          <button
-            onclick={() => handleMenuClick(item.href)}
-            onkeydown={(e) =>
-              handleKeyDown(e, () => handleMenuClick(item.href))}
-            class="btn btn-ghost justify-start w-full p-4 h-auto hover:bg-primary/10 transition-all duration-300"
-            class:btn-primary={isActive(item.href)}
-          >
-            <div class="flex items-center space-x-4">
-              {#if item.icon === IconChat}
-                <IconChat class="w-5 h-5" />
-              {:else if item.icon === IconPackage}
-                <IconPackage class="w-5 h-5" />
-              {:else if item.icon === IconCog}
-                <IconCog class="w-5 h-5" />
-              {:else if item.icon === IconInfo}
-                <IconInfo class="w-5 h-5" />
-              {:else if item.icon === IconEmail}
-                <IconEmail class="w-5 h-5" />
-              {/if}
-              <span class="text-lg">{item.label}</span>
-            </div>
-          </button>
-        </li>
-      {/each}
-
-      <!-- 设置区域 -->
-      <div class="divider">设置</div>
-
-      <!-- 主题切换 -->
-      <li>
-        <button
-          onclick={handleThemeToggle}
-          onkeydown={(e) => handleKeyDown(e, handleThemeToggle)}
-          class="btn btn-ghost justify-start w-full p-4 h-auto hover:bg-primary/10 transition-all duration-300"
-        >
-          <div class="flex items-center justify-between w-full">
-            <div class="flex items-center space-x-4">
-              {#if $theme === THEME.DARK}
-                <IconThemeDark class="w-5 h-5 text-warning" />
-                <span class="text-lg">夜晚模式</span>
-              {:else}
-                <IconThemeLight class="w-5 h-5 text-warning" />
-                <span class="text-lg">白天模式</span>
-              {/if}
-            </div>
-            <input
-              type="checkbox"
-              class="toggle toggle-primary pointer-events-none"
-              checked={$theme === THEME.DARK}
-              readonly
-              tabindex="-1"
-            />
-          </div>
-        </button>
-      </li>
-
-      <!-- 系统设置 -->
-      <li>
-        <button
-          onclick={handleSystemSettings}
-          onkeydown={(e) => handleKeyDown(e, handleSystemSettings)}
-          class="btn btn-ghost justify-start w-full p-4 h-auto hover:bg-primary/10 transition-all duration-300"
-        >
-          <div class="flex items-center justify-between w-full">
-            <div class="flex items-center space-x-4">
-              <IconCog class="w-5 h-5" />
-              <span class="text-lg">系统设置</span>
-            </div>
-            <IconChevronRight class="w-4 h-4 opacity-50" />
-          </div>
-        </button>
-      </li>
-    </div>
-  </div>
-</div>
 
 <!-- 占位元素 -->
 <div class={`h-16 ${breadcrumbsLength > 0 ? "lg:h-16 h-20" : ""}`}></div>

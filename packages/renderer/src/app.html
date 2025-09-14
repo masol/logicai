@@ -1,12 +1,28 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		%sveltekit.head%
-	</head>
-	<body class="overflow-y-scroll scrollbar-visible" data-sveltekit-preload-data="hover">
-		<div style="display: contents">%sveltekit.body%</div>
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    %sveltekit.head%
+    <!-- 防止主题闪烁的脚本 -->
+    <script>
+      if (typeof window !== "undefined") {
+        const theme =
+          localStorage.getItem("mode-watcher-mode") ||
+          (window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light");
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        }
+      }
+    </script>
+  </head>
+  <body
+    class="overflow-y-scroll scrollbar-visible"
+    data-sveltekit-preload-data="hover"
+  >
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
 </html>
