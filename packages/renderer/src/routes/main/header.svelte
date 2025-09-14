@@ -27,6 +27,13 @@
   let isSettingsOpen = $state(false);
   let headerElement = $state<HTMLElement>();
 
+  // 计算动态类名
+  const headerClasses = $derived(
+    `navbar fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-base-300 transition-all duration-300 ease-out ${
+      isScrolled ? "bg-base-100/95 shadow-lg" : "bg-base-100/85 shadow-sm"
+    }`,
+  );
+
   // 主菜单项配置
   const menuItems = [
     { label: "首页", href: "/", icon: IconChat },
@@ -140,12 +147,7 @@
   });
 </script>
 
-<header
-  bind:this={headerElement}
-  class="navbar fixed top-0 left-0 right-0 z-50 bg-base-100/85 backdrop-blur-md border-b border-base-content/10 transition-all duration-300 ease-out {isScrolled
-    ? 'bg-base-100/95 shadow-lg border-base-content/20'
-    : 'shadow-sm'}"
->
+<header bind:this={headerElement} class={headerClasses}>
   <!-- 主导航栏 -->
   <div class="navbar-start min-w-0">
     <button
@@ -212,11 +214,8 @@
           <li>
             <a
               href={item.href}
-              class="btn btn-ghost btn-sm flex items-center space-x-2 hover:scale-105 focus:scale-105 transition-all duration-300 {isActive(
-                item.href,
-              )
-                ? 'btn-primary'
-                : ''}"
+              class="btn btn-ghost btn-sm flex items-center space-x-2 hover:scale-105 focus:scale-105 transition-all duration-300"
+              class:btn-primary={isActive(item.href)}
               aria-current={isActive(item.href) ? "page" : undefined}
             >
               {#if item.icon === IconChat}
@@ -242,23 +241,22 @@
       <button
         onclick={(e) => toggleSettings(e)}
         onkeydown={(e) => handleKeyDown(e, () => toggleSettings())}
-        class="btn btn-ghost btn-circle hover:scale-110 transition-all duration-300 {isSettingsOpen
-          ? 'btn-active'
-          : ''}"
+        class="btn btn-ghost btn-circle hover:scale-110 transition-all duration-300"
+        class:btn-active={isSettingsOpen}
         aria-label="设置菜单"
         aria-expanded={isSettingsOpen}
         aria-haspopup="true"
       >
         <IconSettings
-          class="w-5 h-5 transition-all duration-300 {isSettingsOpen
-            ? 'rotate-90 text-primary'
-            : 'hover:rotate-45'}"
+          class={`w-5 h-5 transition-all duration-300 ${
+            isSettingsOpen ? "rotate-90 text-primary" : "hover:rotate-45"
+          }`}
         />
       </button>
 
       {#if isSettingsOpen}
         <div
-          class="absolute right-0 top-full mt-2 card card-compact w-64 p-2 shadow-xl bg-base-100 border border-base-content/10 z-50"
+          class="absolute right-0 top-full mt-2 card card-compact w-64 p-2 shadow-xl bg-base-100 border border-base-300 z-50"
           in:scale={{ duration: 200, start: 0.9 }}
           out:scale={{ duration: 150, start: 0.9 }}
           role="menu"
@@ -266,13 +264,13 @@
         >
           <div class="card-body">
             <h3 class="card-title text-sm">设置</h3>
-<!-- 
+
             <div class="divider my-1"></div>
 
             <button
               onclick={handleThemeToggle}
               onkeydown={(e) => handleKeyDown(e, handleThemeToggle)}
-              class="btn btn-ghost justify-start space-x-3 w-full hover:btn-primary/10 transition-all duration-200"
+              class="btn btn-ghost justify-start space-x-3 w-full hover:bg-primary/10 transition-all duration-200"
               role="menuitem"
             >
               <div class="flex items-center space-x-3 flex-1">
@@ -291,7 +289,7 @@
                 readonly
                 tabindex="-1"
               />
-            </button> -->
+            </button>
 
             <div class="divider my-1"></div>
 
@@ -299,7 +297,7 @@
             <button
               onclick={handleSystemSettings}
               onkeydown={(e) => handleKeyDown(e, handleSystemSettings)}
-              class="btn btn-ghost justify-between w-full hover:btn-primary/10 transition-all duration-200"
+              class="btn btn-ghost justify-between w-full hover:bg-primary/10 transition-all duration-200"
               role="menuitem"
             >
               <div class="flex items-center space-x-3">
@@ -322,14 +320,14 @@
     >
       <div class="relative w-6 h-6">
         <IconMenu
-          class="absolute inset-0 w-6 h-6 transition-all duration-300 {isMenuOpen
-            ? 'rotate-180 opacity-0'
-            : 'rotate-0 opacity-100'}"
+          class={`absolute inset-0 w-6 h-6 transition-all duration-300 ${
+            isMenuOpen ? "rotate-180 opacity-0" : "rotate-0 opacity-100"
+          }`}
         />
         <IconClose
-          class="absolute inset-0 w-6 h-6 transition-all duration-300 {isMenuOpen
-            ? 'rotate-0 opacity-100'
-            : 'rotate-180 opacity-0'}"
+          class={`absolute inset-0 w-6 h-6 transition-all duration-300 ${
+            isMenuOpen ? "rotate-0 opacity-100" : "rotate-180 opacity-0"
+          }`}
         />
       </div>
     </button>
@@ -339,7 +337,7 @@
 <!-- 移动端面包屑 -->
 {#if breadcrumbsLength > 0}
   <div
-    class="lg:hidden px-4 py-3 bg-base-200/80 backdrop-blur border-b border-base-content/10 fixed top-16 left-0 right-0 z-40"
+    class="lg:hidden px-4 py-3 bg-base-200/80 backdrop-blur border-b border-base-300 fixed top-16 left-0 right-0 z-40"
     in:fly={{ y: -20, duration: 400 }}
     out:fly={{ y: -20, duration: 300 }}
   >
@@ -398,7 +396,7 @@
     <div class="menu p-4 w-80 min-h-full bg-base-100 space-y-2">
       <!-- Logo区域 -->
       <div
-        class="flex items-center space-x-3 p-4 border-b border-base-content/10 mb-4"
+        class="flex items-center space-x-3 p-4 border-b border-base-300 mb-4"
       >
         <IconChat class="w-8 h-8 text-primary" />
         <span class="text-xl font-bold">指挥官</span>
@@ -407,20 +405,19 @@
       <!-- 主菜单项 -->
       {#each menuItems as item, index (item.href)}
         <li
-          class="transform transition-all duration-300 {isMenuOpen
-            ? 'translate-x-0 opacity-100'
-            : '-translate-x-full opacity-0'}"
+          class={`transform transition-all duration-300 ${
+            isMenuOpen
+              ? "translate-x-0 opacity-100"
+              : "-translate-x-full opacity-0"
+          }`}
           style="transition-delay: {index * 50}ms"
         >
           <button
             onclick={() => handleMenuClick(item.href)}
             onkeydown={(e) =>
               handleKeyDown(e, () => handleMenuClick(item.href))}
-            class="btn btn-ghost justify-start w-full p-4 h-auto hover:btn-primary/10 transition-all duration-300 {isActive(
-              item.href,
-            )
-              ? 'btn-primary'
-              : ''}"
+            class="btn btn-ghost justify-start w-full p-4 h-auto hover:bg-primary/10 transition-all duration-300"
+            class:btn-primary={isActive(item.href)}
           >
             <div class="flex items-center space-x-4">
               {#if item.icon === IconChat}
@@ -448,7 +445,7 @@
         <button
           onclick={handleThemeToggle}
           onkeydown={(e) => handleKeyDown(e, handleThemeToggle)}
-          class="btn btn-ghost justify-start w-full p-4 h-auto hover:btn-primary/10 transition-all duration-300"
+          class="btn btn-ghost justify-start w-full p-4 h-auto hover:bg-primary/10 transition-all duration-300"
         >
           <div class="flex items-center justify-between w-full">
             <div class="flex items-center space-x-4">
@@ -476,7 +473,7 @@
         <button
           onclick={handleSystemSettings}
           onkeydown={(e) => handleKeyDown(e, handleSystemSettings)}
-          class="btn btn-ghost justify-start w-full p-4 h-auto hover:btn-primary/10 transition-all duration-300"
+          class="btn btn-ghost justify-start w-full p-4 h-auto hover:bg-primary/10 transition-all duration-300"
         >
           <div class="flex items-center justify-between w-full">
             <div class="flex items-center space-x-4">
@@ -492,4 +489,4 @@
 </div>
 
 <!-- 占位元素 -->
-<div class="h-16 {breadcrumbsLength > 0 ? 'lg:h-16 h-20' : ''}"></div>
+<div class={`h-16 ${breadcrumbsLength > 0 ? "lg:h-16 h-20" : ""}`}></div>

@@ -3,12 +3,16 @@ import IconImage from "~icons/mdi/image";
 import IconVideo from "~icons/mdi/video";
 import IconAudio from "~icons/mdi/music";
 // import IconTransform from "~icons/mdi/swap-horizontal";
-
-
+import IconImgRecog from "~icons/mdi/image-search";
+import IconASR from '~icons/mdi/microphone-settings'
+import IconVCA from '~icons/mdi/video-input-component'
 
 // 模型分类及图标
 export const modelCategories = {
-    llm: { name: "大语言模型", icon: IconText},
+    llm: { name: "大语言模型", icon: IconText },
+    asr: { name: "语音识别", icon: IconASR },
+    imgrecog: { name: "图像识别", icon: IconImgRecog },
+    vca: { name: "视频分析", icon: IconVCA },
     text2img: { name: "文生图", icon: IconImage },
     text2video: { name: "视频生成", icon: IconVideo },
     text2audio: { name: "语音合成", icon: IconAudio },
@@ -55,4 +59,4 @@ export const languages = [
     { code: "zh-CN", name: "简体中文" },
     { code: "en-US", name: "English" },
     { code: "ja-JP", name: "日本語" },
-  ];
+];

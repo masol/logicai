@@ -4,8 +4,9 @@
   import { spring, tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import IconSettings from "~icons/mdi/cog";
-  import IconLanguage from "~icons/mdi/translate";
+  import IconGeneral from "~icons/mdi/tune";
   import IconModel from "~icons/mdi/brain";
+  import IconMcp from "~icons/mdi/puzzle";
   import IconAdd from "~icons/mdi/plus";
   import IconChevronDown from "~icons/mdi/chevron-down";
   import IconHelp from "~icons/mdi/help-circle-outline";
@@ -14,6 +15,8 @@
   import IconLoading from "~icons/mdi/loading";
   import IconPower from "~icons/mdi/power";
   import IconPowerOff from "~icons/mdi/power-off";
+  import IconCloud from "~icons/mdi/cloud";
+  import IconDesktop from "~icons/mdi/desktop-classic";
   import { modelCategories, presetModels, languages } from "./modes.const";
   import { rpc } from "@app/preload";
 
@@ -24,9 +27,13 @@
   let selectedSection = $state("general");
   let selectedSubSection = $state("");
 
-  // 语言设置
+  // 一般设置
   let currentLanguage = $state("zh-CN");
+  let androidName = $state("指挥官");
+  let androidGoal = $state("忠实执行使用者命令");
   let showLanguageHelp = $state(false);
+  let showNameHelp = $state(false);
+  let showGoalHelp = $state(false);
 
   // 默认嵌入模型
   let defaultEmbeddingModel = $state("");
@@ -35,6 +42,9 @@
   // 模型数据 - 初始为空
   let models = $state({});
 
+  // MCP数据
+  let mcpServices = $state([]);
+
   // 展开状态
   let expandedCategories = $state(new Set());
 
@@ -42,6 +52,18 @@
   let showAddModal = $state(false);
   let newModel = $state({
     name: "",
+    apiKey: "",
+    showApiKey: false,
+  });
+
+  // 添加MCP弹窗
+  let showAddMcpModal = $state(false);
+  let newMcp = $state({
+    name: "",
+    description: "",
+    type: "local", // local | remote
+    command: "",
+    url: "",
     apiKey: "",
     showApiKey: false,
   });
@@ -64,6 +86,9 @@
       rpc.sys.get("models"),
       rpc.sys.get("currentLanguage"),
       rpc.sys.get("defaultEmbeddingModel"),
+      rpc.sys.get("androidName"),
+      rpc.sys.get("androidGoal"),
+      rpc.sys.get("mcpServices"),
     ];
     const values = await Promise.all(infos);
 
@@ -71,6 +96,9 @@
     models = values[0] || {};
     currentLanguage = (values[1] || "zh-CN") as string;
     defaultEmbeddingModel = (values[2] || "") as string;
+    androidName = (values[3] || "指挥官") as string;
+    androidGoal = (values[4] || "忠实执行使用者指令") as string;
+    mcpServices = values[5] || [];
 
     // 默认展开有模型的分类
     Object.keys(models).forEach((category) => {
@@ -88,6 +116,16 @@
     await rpc.sys.set("currentLanguage", $state.snapshot(language));
   }
 
+  async function saveAndroidName(name) {
+    console.log("保存人造人名称:", name);
+    await rpc.sys.set("androidName", $state.snapshot(name));
+  }
+
+  async function saveAndroidGoal(goal) {
+    console.log("保存人造人目标:", goal);
+    await rpc.sys.set("androidGoal", $state.snapshot(goal));
+  }
+
   async function saveEmbeddingModel(model) {
     console.log("保存默认嵌入模型:", model);
     await rpc.sys.set("defaultEmbeddingModel", $state.snapshot(model));
@@ -96,6 +134,11 @@
   async function saveModels(modelsData) {
     console.log("保存模型配置:", modelsData);
     await rpc.sys.set("models", $state.snapshot(modelsData));
+  }
+
+  async function saveMcpServices(mcpData) {
+    console.log("保存MCP服务配置:", mcpData);
+    await rpc.sys.set("mcpServices", $state.snapshot(mcpData));
   }
 
   onMount(() => {
@@ -162,6 +205,41 @@
     showAddModal = false;
   }
 
+  function addMcp() {
+    if (!newMcp.name || !newMcp.description) return;
+    if (newMcp.type === "local" && !newMcp.command) return;
+    if (newMcp.type === "remote" && (!newMcp.url || !newMcp.apiKey)) return;
+
+    const id = Date.now();
+
+    // 添加MCP服务
+    mcpServices.push({
+      id,
+      name: newMcp.name,
+      description: newMcp.description,
+      type: newMcp.type,
+      command: newMcp.type === "local" ? newMcp.command : "",
+      url: newMcp.type === "remote" ? newMcp.url : "",
+      apiKey: newMcp.type === "remote" ? newMcp.apiKey : "",
+      enabled: true,
+    });
+
+    // 保存MCP配置
+    saveMcpServices(mcpServices);
+
+    // 重置表单
+    newMcp = {
+      name: "",
+      description: "",
+      type: "local",
+      command: "",
+      url: "",
+      apiKey: "",
+      showApiKey: false,
+    };
+    showAddMcpModal = false;
+  }
+
   function deleteModel(category, modelId) {
     models[category] = models[category].filter((m) => m.id !== modelId);
 
@@ -173,6 +251,11 @@
 
     // 保存模型配置
     saveModels(models);
+  }
+
+  function deleteMcp(mcpId) {
+    mcpServices = mcpServices.filter((m) => m.id !== mcpId);
+    saveMcpServices(mcpServices);
   }
 
   function toggleModelEnabled(category, modelId) {
@@ -190,9 +273,29 @@
     }
   }
 
+  function toggleMcpEnabled(mcpId) {
+    const mcp = mcpServices.find((m) => m.id === mcpId);
+    if (mcp) {
+      mcp.enabled = !mcp.enabled;
+      saveMcpServices(mcpServices);
+    }
+  }
+
   function onLanguageChange() {
     if (!isLoading) {
       saveLanguage(currentLanguage);
+    }
+  }
+
+  function onAndroidNameChange() {
+    if (!isLoading) {
+      saveAndroidName(androidName);
+    }
+  }
+
+  function onAndroidGoalChange() {
+    if (!isLoading) {
+      saveAndroidGoal(androidGoal);
     }
   }
 
@@ -206,6 +309,10 @@
     newModel.showApiKey = !newModel.showApiKey;
   }
 
+  function toggleMcpApiKeyVisibility() {
+    newMcp.showApiKey = !newMcp.showApiKey;
+  }
+
   // 获取分类中的模型数量
   function getModelCount(category) {
     return models[category]?.length || 0;
@@ -216,6 +323,11 @@
     return models[category]?.filter((m) => m.enabled).length || 0;
   }
 
+  // 获取MCP启用数量
+  function getEnabledMcpCount() {
+    return mcpServices.filter((m) => m.enabled).length;
+  }
+
   // 动态组件渲染函数
   function getCategoryIcon(category) {
     return modelCategories[category]?.icon;
@@ -223,15 +335,25 @@
 
   // 获取当前选中的模型信息
   function getSelectedModel() {
-    if (!selectedSubSection) return null;
-    const [categoryKey, modelId] = selectedSubSection.split("-");
+    if (!selectedSubSection || !selectedSubSection.startsWith("model-"))
+      return null;
+    const [, categoryKey, modelId] = selectedSubSection.split("-");
     return models[categoryKey]?.find((m) => m.id === parseInt(modelId));
   }
 
   // 获取当前选中模型的分类
   function getSelectedCategory() {
-    if (!selectedSubSection) return null;
-    return selectedSubSection.split("-")[0];
+    if (!selectedSubSection || !selectedSubSection.startsWith("model-"))
+      return null;
+    return selectedSubSection.split("-")[1];
+  }
+
+  // 获取当前选中的MCP信息
+  function getSelectedMcp() {
+    if (!selectedSubSection || !selectedSubSection.startsWith("mcp-"))
+      return null;
+    const mcpId = selectedSubSection.split("-")[1];
+    return mcpServices.find((m) => m.id === parseInt(mcpId));
   }
 
   // 检查模型是否不支持嵌入
@@ -277,13 +399,13 @@
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
               : 'text-gray-700 dark:text-gray-300'}"
           >
-            <IconLanguage />
+            <IconGeneral />
             一般设置
           </button>
         </div>
 
         <!-- 模型设置 -->
-        <div>
+        <div class="mb-6">
           <div class="flex items-center justify-between mb-3">
             <div
               class="flex items-center gap-3 text-sm font-medium text-gray-900 dark:text-white"
@@ -340,7 +462,7 @@
                     {#each models[categoryKey] as model}
                       <div
                         class="flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 {selectedSubSection ===
-                        `${categoryKey}-${model.id}`
+                        `model-${categoryKey}-${model.id}`
                           ? 'bg-blue-50 dark:bg-blue-900/30'
                           : ''}"
                       >
@@ -363,7 +485,7 @@
                           onclick={() =>
                             selectSection(
                               "model",
-                              `${categoryKey}-${model.id}`,
+                              `model-${categoryKey}-${model.id}`,
                             )}
                           class="flex-1 text-left"
                         >
@@ -411,6 +533,97 @@
             </div>
           {/each}
         </div>
+
+        <!-- MCP设置 -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div
+              class="flex items-center gap-3 text-sm font-medium text-gray-900 dark:text-white"
+            >
+              <IconMcp />
+              MCP
+              <span
+                class="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded-full"
+              >
+                {getEnabledMcpCount()}/{mcpServices.length}
+              </span>
+            </div>
+            <button
+              onclick={() => (showAddMcpModal = true)}
+              class="p-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-200 group"
+            >
+              <IconAdd
+                class="w-4 h-4 group-hover:scale-110 transition-transform duration-200"
+              />
+            </button>
+          </div>
+
+          <div class="space-y-1">
+            {#if mcpServices.length > 0}
+              {#each mcpServices as mcp}
+                <div
+                  class="flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 {selectedSubSection ===
+                  `mcp-${mcp.id}`
+                    ? 'bg-blue-50 dark:bg-blue-900/30'
+                    : ''}"
+                >
+                  <!-- 启用/禁用按钮 -->
+                  <button
+                    onclick={() => toggleMcpEnabled(mcp.id)}
+                    class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    title={mcp.enabled ? "禁用服务" : "启用服务"}
+                  >
+                    {#if mcp.enabled}
+                      <IconPower class="w-3 h-3 text-green-500" />
+                    {:else}
+                      <IconPowerOff class="w-3 h-3 text-gray-400" />
+                    {/if}
+                  </button>
+
+                  <!-- MCP信息 -->
+                  <button
+                    onclick={() => selectSection("mcp", `mcp-${mcp.id}`)}
+                    class="flex-1 text-left"
+                  >
+                    <div class="text-sm">
+                      <div
+                        class="font-medium flex items-center gap-2 {mcp.enabled
+                          ? 'text-gray-900 dark:text-white'
+                          : 'text-gray-400 dark:text-gray-500'}"
+                      >
+                        {mcp.name}
+                        {#if mcp.type === "remote"}
+                          <IconCloud class="w-3 h-3" />
+                        {:else}
+                          <IconDesktop class="w-3 h-3" />
+                        {/if}
+                      </div>
+                      <div
+                        class="text-xs opacity-75 {mcp.enabled
+                          ? 'text-gray-600 dark:text-gray-400'
+                          : 'text-gray-400 dark:text-gray-500'}"
+                      >
+                        {mcp.description}
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              {/each}
+            {:else}
+              <div class="px-3 py-4 text-center">
+                <p class="text-xs text-gray-400 dark:text-gray-500">
+                  暂无MCP服务
+                </p>
+                <button
+                  onclick={() => (showAddMcpModal = true)}
+                  class="text-xs text-blue-500 hover:text-blue-600 mt-1"
+                >
+                  点击添加
+                </button>
+              </div>
+            {/if}
+          </div>
+        </div>
       </nav>
     </div>
 
@@ -431,47 +644,124 @@
                 <h3
                   class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
                 >
-                  <IconLanguage class="text-blue-500" />
-                  语言设置
+                  <IconGeneral class="text-blue-500" />
+                  基础配置
                 </h3>
 
-                <div class="flex items-center gap-4">
-                  <label
-                    for="language-select"
-                    class="text-gray-700 dark:text-gray-300 min-w-0 flex-1"
-                    >母语 <button
-                      onmouseenter={() => (showLanguageHelp = true)}
-                      onmouseleave={() => (showLanguageHelp = false)}
-                      onkeydown={(e) =>
-                        e.key === "Enter" &&
-                        (showLanguageHelp = !showLanguageHelp)}
-                      class="relative"
-                      tabindex="0"
+                <div class="space-y-4">
+                  <!-- 语言设置 -->
+                  <div class="flex items-center gap-4">
+                    <span
+                      class="text-gray-700 dark:text-gray-300 min-w-0 flex-1 flex items-center gap-2"
                     >
-                      <IconHelp
-                        class="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      />
-                      {#if showLanguageHelp}
-                        <div
-                          class="absolute left-6 top-0 bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-10"
-                          transition:fly={{ y: -10, duration: 200 }}
-                        >
-                          这不是界面语言，而是本体语言，本体当前不支持跨语言
-                        </div>
-                      {/if}
-                    </button>
-                    ：</label
-                  >
-                  <select
-                    id="language-select"
-                    bind:value={currentLanguage}
-                    onchange={onLanguageChange}
-                    class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-w-[120px]"
-                  >
-                    {#each languages as language}
-                      <option value={language.code}>{language.name}</option>
-                    {/each}
-                  </select>
+                      母语
+                      <button
+                        onmouseenter={() => (showLanguageHelp = true)}
+                        onmouseleave={() => (showLanguageHelp = false)}
+                        onkeydown={(e) =>
+                          e.key === "Enter" &&
+                          (showLanguageHelp = !showLanguageHelp)}
+                        class="relative"
+                        tabindex="0"
+                      >
+                        <IconHelp
+                          class="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        />
+                        {#if showLanguageHelp}
+                          <div
+                            class="absolute left-6 top-0 bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-10"
+                            transition:fly={{ y: -10, duration: 200 }}
+                          >
+                            这不是界面语言，而是本体语言，本体当前不支持跨语言，启动后不要切换
+                          </div>
+                        {/if}
+                      </button>
+                      ：
+                    </span>
+                    <select
+                      bind:value={currentLanguage}
+                      onchange={onLanguageChange}
+                      class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-w-[120px]"
+                    >
+                      {#each languages as language}
+                        <option value={language.code}>{language.name}</option>
+                      {/each}
+                    </select>
+                  </div>
+
+                  <!-- 名称设置 -->
+                  <div class="flex items-center gap-4">
+                    <span
+                      class="text-gray-700 dark:text-gray-300 min-w-0 flex-1 flex items-center gap-2"
+                    >
+                      名称
+                      <button
+                        onmouseenter={() => (showNameHelp = true)}
+                        onmouseleave={() => (showNameHelp = false)}
+                        onkeydown={(e) =>
+                          e.key === "Enter" && (showNameHelp = !showNameHelp)}
+                        class="relative"
+                        tabindex="0"
+                      >
+                        <IconHelp
+                          class="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        />
+                        {#if showNameHelp}
+                          <div
+                            class="absolute left-6 top-0 bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-10"
+                            transition:fly={{ y: -10, duration: 200 }}
+                          >
+                            此人造人的名字
+                          </div>
+                        {/if}
+                      </button>
+                      ：
+                    </span>
+                    <input
+                      type="text"
+                      bind:value={androidName}
+                      onchange={onAndroidNameChange}
+                      class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-w-[200px]"
+                      placeholder="指挥官"
+                    />
+                  </div>
+
+                  <!-- 目标设置 -->
+                  <div class="flex items-center gap-4">
+                    <span
+                      class="text-gray-700 dark:text-gray-300 min-w-0 flex-1 flex items-center gap-2"
+                    >
+                      目标
+                      <button
+                        onmouseenter={() => (showGoalHelp = true)}
+                        onmouseleave={() => (showGoalHelp = false)}
+                        onkeydown={(e) =>
+                          e.key === "Enter" && (showGoalHelp = !showGoalHelp)}
+                        class="relative"
+                        tabindex="0"
+                      >
+                        <IconHelp
+                          class="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        />
+                        {#if showGoalHelp}
+                          <div
+                            class="absolute left-6 top-0 bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-10"
+                            transition:fly={{ y: -10, duration: 200 }}
+                          >
+                            此人造人的目标
+                          </div>
+                        {/if}
+                      </button>
+                      ：
+                    </span>
+                    <input
+                      type="text"
+                      bind:value={androidGoal}
+                      onchange={onAndroidGoalChange}
+                      class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-w-[200px]"
+                      placeholder="忠实执行使用者指令"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -501,20 +791,17 @@
                         class="absolute left-6 top-0 bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-10"
                         transition:fly={{ y: -10, duration: 200 }}
                       >
-                        为支持语义搜索，使用的模型，如果切换，需要重建索引
+                        语义搜索使用的嵌入模型，如果未给定，本体会拆分至全文检索可解的程度
                       </div>
                     {/if}
                   </button>
                 </h3>
 
                 <div class="flex items-center gap-4">
-                  <label
-                    for="embedding-model-select"
-                    class="text-gray-700 dark:text-gray-300 min-w-0 flex-1"
-                    >选择模型：</label
-                  >
+                  <span class="text-gray-700 dark:text-gray-300 min-w-0 flex-1">
+                    选择模型：
+                  </span>
                   <select
-                    id="embedding-model-select"
                     bind:value={defaultEmbeddingModel}
                     onchange={onEmbeddingModelChange}
                     class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white min-w-[200px]"
@@ -639,6 +926,167 @@
               </div>
             {/if}
           </div>
+        {:else if selectedSection === "mcp"}
+          <div in:fly={{ x: 20, duration: 300 }}>
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+              MCP设置
+            </h2>
+
+            {#if selectedSubSection}
+              {#if getSelectedMcp()}
+                {#each [getSelectedMcp()] as mcp}
+                  <div
+                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+                  >
+                    <div class="flex items-center justify-between mb-6">
+                      <div>
+                        <h3
+                          class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2"
+                        >
+                          {mcp.name}
+                          {#if mcp.type === "remote"}
+                            <IconCloud class="w-5 h-5 text-blue-500" />
+                          {:else}
+                            <IconDesktop class="w-5 h-5 text-green-500" />
+                          {/if}
+                          {#if mcp.enabled}
+                            <IconPower class="w-5 h-5 text-green-500" />
+                          {:else}
+                            <IconPowerOff class="w-5 h-5 text-gray-400" />
+                            <span class="text-sm text-gray-500">已禁用</span>
+                          {/if}
+                        </h3>
+                        <p class="text-gray-600 dark:text-gray-400">
+                          {mcp.description}
+                        </p>
+                      </div>
+                      <div class="flex gap-3">
+                        <button
+                          onclick={() => toggleMcpEnabled(mcp.id)}
+                          class="px-4 py-2 {mcp.enabled
+                            ? 'bg-red-500 hover:bg-red-600'
+                            : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
+                        >
+                          {#if mcp.enabled}
+                            <IconPowerOff class="w-4 h-4" />
+                            禁用服务
+                          {:else}
+                            <IconPower class="w-4 h-4" />
+                            启用服务
+                          {/if}
+                        </button>
+                        <button
+                          onclick={() => deleteMcp(mcp.id)}
+                          class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
+                        >
+                          删除服务
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6">
+                      <div class="grid grid-cols-2 gap-4">
+                        <!-- 类型 -->
+                        <div>
+                          <label
+                            for=""
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                          >
+                            类型
+                          </label>
+                          <div
+                            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white flex items-center gap-2"
+                          >
+                            {#if mcp.type === "remote"}
+                              <IconCloud class="w-4 h-4 text-blue-500" />
+                              远端
+                            {:else}
+                              <IconDesktop class="w-4 h-4 text-green-500" />
+                              本地
+                            {/if}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 根据类型显示不同配置 -->
+                      {#if mcp.type === "local"}
+                        <div>
+                          <label
+                            for="mcpCommand"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                          >
+                            命令
+                          </label>
+                          <input
+                            id="mcpCommand"
+                            type="text"
+                            value={mcp.command}
+                            readonly
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
+                          />
+                        </div>
+                      {:else}
+                        <div class="grid grid-cols-2 gap-4">
+                          <div>
+                            <label
+                              for="mcp_url"
+                              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
+                              URL
+                            </label>
+                            <input
+                              id="mcp_url"
+                              type="text"
+                              value={mcp.url}
+                              readonly
+                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              id="mcp_showapiKey"
+                              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
+                              API Key
+                            </label>
+                            <div class="relative">
+                              <input
+                                id="mcp_showapiKey"
+                                type={newMcp.showApiKey ? "text" : "password"}
+                                value={mcp.apiKey}
+                                readonly
+                                class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
+                              />
+                              <button
+                                onclick={toggleMcpApiKeyVisibility}
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                              >
+                                {#if newMcp.showApiKey}
+                                  <IconEyeOff class="w-4 h-4" />
+                                {:else}
+                                  <IconEye class="w-4 h-4" />
+                                {/if}
+                              </button>
+                            </div>
+                          </div>
+
+
+                          
+                        </div>
+                      {/if}
+                    </div>
+                  </div>
+                {/each}
+              {/if}
+            {:else}
+              <div class="text-center py-12">
+                <IconMcp class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p class="text-gray-500 dark:text-gray-400">
+                  请选择一个MCP服务进行配置
+                </p>
+              </div>
+            {/if}
+          </div>
         {/if}
       </div>
     </div>
@@ -749,6 +1197,166 @@
           <button
             onclick={addModel}
             disabled={!newModel.name || !newModel.apiKey}
+            class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          >
+            添加
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- 添加MCP弹窗 -->
+  {#if showAddMcpModal}
+    <div
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      transition:fly={{ y: 20, duration: 300 }}
+      onclick={(e) => e.target === e.currentTarget && (showAddMcpModal = false)}
+      onkeydown={(e) => e.key === "Escape" && (showAddMcpModal = false)}
+      role="dialog"
+      tabindex="-1"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full p-6"
+        transition:fly={{ y: 20, duration: 300 }}
+      >
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+          添加MCP服务
+        </h3>
+
+        <div class="space-y-4">
+          <!-- 名称 -->
+          <div>
+            <label
+              for="mcp-name"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              名称
+            </label>
+            <input
+              id="mcp-name"
+              type="text"
+              bind:value={newMcp.name}
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="输入服务名称"
+            />
+          </div>
+
+          <!-- 功能简介 -->
+          <div>
+            <label
+              for="mcp-description"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              功能简介
+            </label>
+            <textarea
+              id="mcp-description"
+              bind:value={newMcp.description}
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="描述此服务的功能"
+            ></textarea>
+          </div>
+
+          <!-- 类型选择 -->
+          <div>
+            <label
+              for="mcp-type"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              类型
+            </label>
+            <select
+              id="mcp-type"
+              bind:value={newMcp.type}
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="local">本地</option>
+              <option value="remote">远端</option>
+            </select>
+          </div>
+
+          <!-- 根据类型显示不同配置 -->
+          {#if newMcp.type === "local"}
+            <div>
+              <label
+                for="mcp-command"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                命令及参数
+              </label>
+              <input
+                id="mcp-command"
+                type="text"
+                bind:value={newMcp.command}
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="输入执行命令，如: python script.py --arg"
+              />
+            </div>
+          {:else}
+            <div class="grid grid-cols-2 gap-4">
+              <!-- URL -->
+              <div>
+                <label
+                  for="mcp-url"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  URL路径
+                </label>
+                <input
+                  id="mcp-url"
+                  type="url"
+                  bind:value={newMcp.url}
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="https://api.example.com"
+                />
+              </div>
+              <!-- API Key -->
+              <div>
+                <label
+                  for="mcp-api-key"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  API Key
+                </label>
+                <div class="relative">
+                  <input
+                    id="mcp-api-key"
+                    type={newMcp.showApiKey ? "text" : "password"}
+                    bind:value={newMcp.apiKey}
+                    class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="输入API Key"
+                  />
+                  <button
+                    onclick={toggleMcpApiKeyVisibility}
+                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {#if newMcp.showApiKey}
+                      <IconEyeOff class="w-4 h-4" />
+                    {:else}
+                      <IconEye class="w-4 h-4" />
+                    {/if}
+                  </button>
+                </div>
+              </div>
+            </div>
+          {/if}
+        </div>
+
+        <div class="flex gap-3 mt-6">
+          <button
+            onclick={() => (showAddMcpModal = false)}
+            class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+          >
+            取消
+          </button>
+          <button
+            onclick={addMcp}
+            disabled={!newMcp.name ||
+              !newMcp.description ||
+              (newMcp.type === "local" && !newMcp.command) ||
+              (newMcp.type === "remote" && (!newMcp.url || !newMcp.apiKey))}
             class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           >
             添加
