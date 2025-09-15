@@ -1,49 +1,54 @@
-<!-- SysSay.svelte -->
+<!-- AISay.svelte -->
 <script lang="ts">
-  import { fade, scale } from "svelte/transition";
+  import { fade, slide } from "svelte/transition";
+  import { spring } from "svelte/motion";
+  import { Markdown } from "svelte-exmarkdown";
+  import type { MessageContent } from "$lib/stores/chatStore";
 
   interface Props {
-    content: string;
-    timestamp?: number;
+    content: MessageContent;
   }
 
-  let { content, timestamp }: Props = $props();
+  let { content }: Props = $props();
 
   let visible = $state(false);
+  let scale = spring(0.8);
 
   $effect(() => {
     visible = true;
+    scale.set(1);
   });
 
-  const formatTime = (ts?: number) => {
-    if (!ts) return "";
-    return new Date(ts).toLocaleTimeString("zh-CN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const getModeStyles = (mode?: string) => {
+    switch (mode) {
+      case "warn":
+        return "bg-amber-50 border-l-4 border-amber-400 text-amber-900 dark:bg-amber-950/20 dark:border-amber-600 dark:text-amber-200";
+      case "info":
+        return "bg-blue-50 border-l-4 border-blue-400 text-blue-900 dark:bg-blue-950/20 dark:border-blue-600 dark:text-blue-200";
+      case "error":
+      default:
+        return "bg-red-50 border-l-4 border-red-400 text-red-900 dark:bg-red-950/20 dark:border-red-600 dark:text-red-200";
+    }
   };
 </script>
 
 {#if visible}
   <div
-    in:scale={{ duration: 300, start: 0.9 }}
+    in:slide={{ duration: 400, delay: 100 }}
     out:fade={{ duration: 200 }}
-    class="group flex justify-center"
+    style="transform: scale({$scale})"
+    class="group relative"
   >
-    <div class="flex flex-col items-center space-y-1">
+    <div class="flex justify-start">
       <div
-        class="rounded-full bg-muted/60 px-4 py-2 backdrop-blur-sm transition-all duration-200 group-hover:bg-muted/80"
+        class="max-w-4xl rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm transition-all duration-300 group-hover:shadow-lg {getModeStyles(
+          content.mode,
+        )}"
       >
-        <p class="text-xs text-muted-foreground">{content}</p>
+        <div class="prose prose-sm max-w-none dark:prose-invert">
+          <Markdown md={content.content} />
+        </div>
       </div>
-
-      {#if timestamp}
-        <span
-          class="text-xs text-muted-foreground/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-        >
-          {formatTime(timestamp)}
-        </span>
-      {/if}
     </div>
   </div>
 {/if}

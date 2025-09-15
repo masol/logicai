@@ -62,6 +62,11 @@
     }
   };
 
+  // 完整时间格式化函数
+  const formatFullTime = (timestamp: number) => {
+    return dayjs(timestamp).format("YYYY年MM月DD日 HH:mm:ss");
+  };
+
   // 检查滚动状态
   const checkScrollState = () => {
     if (!scrollContainer || !hasMessages) {
@@ -163,7 +168,7 @@
                 </div>
                 <!-- AI 对话气泡 -->
                 <div
-                  class="relative max-w-[70%] rounded-2xl rounded-bl-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm"
+                  class="relative max-w-[calc(100%-3rem)] rounded-2xl rounded-bl-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm"
                 >
                   <!-- 气泡尾巴 -->
                   <div
@@ -177,12 +182,16 @@
                     <div class="text-gray-900 dark:text-gray-100">
                       <AISay
                         content={message.content}
-                        timestamp={message.timestamp}
                       />
                     </div>
                     <!-- 时间显示 -->
-                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                      {formatTime(message.timestamp)}
+                    <div class="relative inline-block mt-2">
+                      <div
+                        class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200 hover:text-gray-700 dark:hover:text-gray-200"
+                        title={formatFullTime(message.timestamp)}
+                      >
+                        {formatTime(message.timestamp)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -191,7 +200,7 @@
               <div class="flex items-end justify-end space-x-3">
                 <!-- 用户对话气泡 -->
                 <div
-                  class="relative max-w-[70%] rounded-2xl rounded-br-sm bg-blue-500 dark:bg-blue-600 shadow-sm"
+                  class="relative max-w-[calc(100%-3rem)] rounded-2xl rounded-br-sm bg-blue-500 dark:bg-blue-600 shadow-sm"
                 >
                   <!-- 气泡尾巴 -->
                   <div
@@ -202,12 +211,16 @@
                     <div class="text-white">
                       <UserSay
                         content={message.content}
-                        timestamp={message.timestamp}
                       />
                     </div>
                     <!-- 时间显示 -->
-                    <div class="text-xs text-white/70 mt-2">
-                      {formatTime(message.timestamp)}
+                    <div class="relative inline-block mt-2">
+                      <div
+                        class="text-xs text-white/70 transition-colors duration-200 hover:text-white/90"
+                        title={formatFullTime(message.timestamp)}
+                      >
+                        {formatTime(message.timestamp)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -233,9 +246,11 @@
                   <div class="text-sm text-gray-600 dark:text-gray-400">
                     <SysSay
                       content={message.content}
-                      timestamp={message.timestamp}
                     />
-                    <span class="ml-2 text-xs opacity-70">
+                    <span
+                      class="ml-2 text-xs opacity-70 transition-opacity duration-200 hover:opacity-100"
+                      title={formatFullTime(message.timestamp)}
+                    >
                       {formatTime(message.timestamp)}
                     </span>
                   </div>
@@ -269,10 +284,10 @@
 
         <div class="text-center space-y-3 max-w-md">
           <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            开始新的对话
+            开始对话
           </h3>
           <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-            暂时还没有消息记录。开始与 AI 助手对话，这里将显示您的聊天历史。
+            暂时没有消息记录。开始对话后，这里将显示您的聊天历史。如下所示，新消息位于上方。
           </p>
         </div>
 
@@ -285,7 +300,7 @@
             >
               <IconRobot class="h-full w-full text-white" />
             </div>
-            <span class="text-gray-600 dark:text-gray-400">AI 助手回复</span>
+            <span class="text-gray-600 dark:text-gray-400">AI回复</span>
           </div>
 
           <div
