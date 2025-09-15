@@ -1,14 +1,18 @@
 import { LokiDatabase } from "./loki.js";
 import path from "node:path";
+import { History } from "./history.js";
 
 export class AppContext {
   #initstate = {
-    db: false
+    db: false,
+    history: false,
   }
 
   readonly app: Electron.App;
   readonly win: Electron.BrowserWindow;
   readonly db: LokiDatabase;
+  readonly history: History;
+
   // key是id,保存为loki/${id}.json．
   readonly #subdb: Map<string, LokiDatabase> = new Map();
   constructor(app: Electron.App, win: Electron.BrowserWindow) {
@@ -16,7 +20,7 @@ export class AppContext {
     this.win = win;
     const userData = app.getPath("userData");
     const dbPath = path.join(userData, "store", "data.json");
-    console.log("dbPath=", dbPath);
+    // console.log("dbPath=", dbPath);
     const that = this;
     this.db = new LokiDatabase(
       { dbPath },
@@ -24,15 +28,22 @@ export class AppContext {
         this.onInitStep("db");
       }
     );
+    this.history = new History(path.join(userData, "store", "history.sqlite"), (error) => {
+      if (error) {
+        that.emit("ERROR", { message: "历史数据库初始化错误" })
+      } else {
+        this.onInitStep("history")
+      }
+    })
   }
 
   get inited(): boolean {
     return this.#initstate.db
   }
 
-  private onInitStep(name: "db") {
+  private onInitStep(name: "db" | "history") {
     this.#initstate[name] = true;
-    if (this.#initstate.db) {
+    if (this.#initstate.db && this.#initstate.history) {
       this.emit("inited", { inited: true })
     }
   }

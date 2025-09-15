@@ -10,7 +10,7 @@ import { allowInternalOrigins } from "./modules/BlockNotAllowdOrigins.js";
 import { allowExternalUrls } from "./modules/ExternalUrls.js";
 
 import { type AppRouter, type RouteResult } from "./app/router.js";
-export { AppRouter, RouteResult }
+export type { AppRouter, RouteResult }
 
 // export type { AppRouter };
 // export { appRouterProxy }

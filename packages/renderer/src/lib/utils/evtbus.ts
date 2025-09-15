@@ -1,4 +1,4 @@
-import { rpc } from "@app/preload";
+import { setEmit } from "@app/preload";
 // lib/events/bus.ts
 
 /**
@@ -41,7 +41,7 @@ class EventBus {
 			EventBus.getInstance().emit(name, data);
 		};
 
-		rpc.setEmit(emitEventBusEvent);
+		setEmit(emitEventBusEvent);
 
 
 		this.initialized = true;

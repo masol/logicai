@@ -39,7 +39,7 @@ ipcRenderer.on('eventbus', (_event, eventName: string, eventData: Record<string,
     }
 });
 
-function setEmit(emit: EmitterFunc) {
+export function setEmit(emit: EmitterFunc) {
     emitter = emit;
 
     // 处理缓存的事件
@@ -64,6 +64,6 @@ export const rpc = {
     sys: {
         get: async (...args: any[]) => electronInvoke("sys.get", ...args),
         set: async (...args: any[]) => electronInvoke("sys.set", ...args),
-    },
-    setEmit
+        history: async (...args: any[]) => electronInvoke("sys.history", ...args),
+    }
 };

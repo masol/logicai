@@ -39,11 +39,11 @@
 
   // 主菜单项配置
   const menuItems = [
-    { label: "首页", href: "/", icon: IconChat },
-    { label: "产品", href: "/products", icon: IconPackage },
-    { label: "服务", href: "/services", icon: IconCog },
-    { label: "关于", href: "/about", icon: IconInfo },
-    { label: "联系", href: "/contact", icon: IconEmail },
+    // { label: "首页", href: "/", icon: IconChat },
+    { label: "工作流", href: "/main/graph", icon: IconPackage },
+    { label: "本体", href: "/main/editor", icon: IconCog },
+    // { label: "关于", href: "/about", icon: IconInfo },
+    // { label: "联系", href: "/contact", icon: IconEmail },
   ];
 
   const currentPath = $derived(page?.url?.pathname || "/");
