@@ -10,6 +10,7 @@ export interface MessageContent {
         type: string;
         desc?: string;
     }[];
+    taskid: string; //添加所属task，用来缩减token消耗。
     progressId?: string;
     progressCtx?: string[];
 }
