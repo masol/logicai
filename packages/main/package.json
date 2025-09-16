@@ -18,6 +18,7 @@
     "@lancedb/lancedb": "^0.21.0",
     "@langchain/baidu-qianfan": "^0.1.0",
     "@langchain/core": "^0.3.62",
+    "@langchain/groq": "^0.2.4",
     "@langchain/langgraph": "^0.3.6",
     "@langchain/openai": "^0.5.18",
     "@langchain/textsplitters": "^0.1.0",

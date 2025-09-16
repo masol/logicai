@@ -8,17 +8,18 @@
 
 
 **English** | [中文](doc/README.cn.md)
+
 **Tips: The English version is translated from the Chinese version by LLM.**
 
 ---
 
 # Project Overview
 
-This project aims to build an intelligent task decomposition system based on logical reasoning. By treating Large Language Model (LLM) calls as idempotent functions, it achieves automated decomposition of complex tasks and workflow orchestration. The core innovation of the system lies in combining the intuitive reasoning capabilities of LLMs with formal logical systems, constructing and maintaining an ontological knowledge space to enable recursive task decomposition and automatic workflow generation and optimization.
+This project aims to build an automatic task decomposition system based on logical reasoning, achieving complex task decomposition and orchestration by treating Large Language Model (LLM) calls as idempotent functions. The core of the system lies in combining the intuitive reasoning capabilities of LLMs with formal logical systems, implementing continuous iteration of task decomposition and orchestration through constructing and maintaining an ontological space.
 
-In this framework, all inputs and outputs are treated as structured data, including prompt design which follows this principle. For example, when we ask an LLM to process information in a "more accessible" or "more professional" manner, these requirements are viewed by LogicAI as adding new dimensions to the data structure - specifically manifested as adding entries like "readability level" and "professionalism degree" to the structured data. These attribute names can be dynamically obtained through LLMs, equivalent to type elevation in logic - like asking "What is an apple?" -> "An apple is a fruit", then asking "What is a fruit?" -> "A fruit is a plant product", recursively obtaining the complete classification chain: apple → fruit → plant product → biological product → matter. This structured perspective enables the system to process and optimize various seemingly ambiguous human requirements in a logical manner.
+In this framework, both inputs and outputs of LLMs are treated as structured data, and the composition of prompts follows this principle as well, no longer viewing them as semantics but as collections of logical dimensions. For example, when we refine prompts by requesting "more accessible" or "more professional" writing, these requirements are viewed by LogicAI as adding new dimensions to the input data—specifically manifested as adding entries such as "readability level" and "professional degree" to the structured data. These attribute names can be dynamically obtained through LLMs, equivalent to type elevation in logic—similar to asking "What is an apple?" -> "An apple is a fruit," then further asking "What is a fruit?" -> "A fruit is a plant product," recursively obtaining the complete classification chain: apple → fruit → plant product → biological product → matter. This structured perspective enables the system to introduce logical systems to process and optimize system workflows.
 
-The entire system combines formal logical systems with neuron-based LLMs (viewed as intuition), transferring system complexity from the LLM level to the architectural level, keeping each sub-task entering the LLM within a controllable complexity range, thereby improving the overall system's reliability and maintainability.
+The entire system combines logic-based formal systems with neuron-based LLMs (viewed as intuition), transferring system complexity from the LLM level to the architectural level, keeping each subtask entering the LLM within a controllable complexity range, thereby improving the complexity the system can handle—treating the entire system as an input/output entity, it can be viewed as an "external augmentation model" that enhances LLM capabilities.
 
 # Core Concept Clarification
 

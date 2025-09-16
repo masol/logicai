@@ -118,13 +118,13 @@
   }
 
   async function saveAndroidName(name) {
-    console.log("保存人造人名称:", name);
+    // console.log("保存人造人名称:", name);
     await rpc.sys.set("androidName", $state.snapshot(name));
     androidNameStore.set(name);
   }
 
   async function saveAndroidGoal(goal) {
-    console.log("保存人造人目标:", goal);
+    // console.log("保存人造人目标:", goal);
     await rpc.sys.set("androidGoal", $state.snapshot(goal));
   }
 
@@ -713,7 +713,7 @@
                             class="absolute left-6 top-0 bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-10"
                             transition:fly={{ y: -10, duration: 200 }}
                           >
-                            此人造人的名字
+                            此LogicAI的名字
                           </div>
                         {/if}
                       </button>
@@ -750,7 +750,7 @@
                             class="absolute left-6 top-0 bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-10"
                             transition:fly={{ y: -10, duration: 200 }}
                           >
-                            此人造人的目标
+                            此LogicAI的目标
                           </div>
                         {/if}
                       </button>

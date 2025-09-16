@@ -22,7 +22,10 @@ export const modelCategories = {
 
 // 预设模型配置
 export const presetModels = {
-    "deepseek-chat": { provider: "DeepSeek", category: "llm", needsApiKey: true }
+    "deepseek-chat": { provider: "DeepSeek", category: "llm", needsApiKey: true },
+    "groq:groq/compound": { provider: "Groq", category: "llm", needsApiKey: true },
+    "groq:llama-3.1-8b-instant": { provider: "Groq", category: "llm", needsApiKey: true },
+    "groq:openai/gpt-oss-120b": { provider: "Groq", category: "llm", needsApiKey: true }
     // "GPT-4o": { provider: "OpenAI", category: "llm", needsApiKey: true },
     // "GPT-4o mini": { provider: "OpenAI", category: "llm", needsApiKey: true },
     // "Claude-3.5 Sonnet": {

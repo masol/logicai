@@ -4,6 +4,8 @@
   import IconMicrophone from "~icons/mdi/microphone";
   import IconAttachment from "~icons/mdi/attachment";
   import IconKeyboard from "~icons/mdi/keyboard";
+  import { currentTaskStore } from "$lib/stores/shared.svelte";
+  import TaskSwitcher from "./TaskSwitcher.svelte";
 
   let {
     breadcrumbsLength = 0,
@@ -22,9 +24,16 @@
   let currentInputHeight = $state(48);
   let animationFrame = $state<number | null>(null);
   let isAtMaxHeight = $state(false);
+  let showTaskSwitcher = $state(false);
+
+  // 使用 $derived 替换 $: 语法
+  const hasTask = $derived(
+    currentTaskStore.value?.id && currentTaskStore.value?.name,
+  );
+  const isInputDisabled = $derived(disabled || !hasTask);
 
   function handleSubmit() {
-    if (message.trim() && !disabled) {
+    if (message.trim() && !isInputDisabled) {
       onSubmit(message.trim());
       message = "";
       isExpanded = false;
@@ -42,6 +51,19 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
+    // ESC 键关闭任务切换器
+    if (event.key === "Escape") {
+      if (showTaskSwitcher) {
+        showTaskSwitcher = false;
+        return;
+      }
+    }
+
+    // 如果输入被禁用，不处理其他按键
+    if (isInputDisabled) {
+      return;
+    }
+
     if (event.key === "Enter") {
       if (event.ctrlKey) {
         // Ctrl + Enter 换行 - 手动插入换行符
@@ -135,6 +157,8 @@
   }
 
   function handleInput() {
+    if (isInputDisabled) return;
+
     // 延迟一帧来确保DOM更新
     requestAnimationFrame(() => {
       calculateAndAnimateHeight();
@@ -146,6 +170,8 @@
   }
 
   function handleFocus() {
+    if (isInputDisabled) return;
+
     const startOpacity = glowOpacity;
     const targetOpacity = 0.5;
     const diff = targetOpacity - startOpacity;
@@ -190,6 +216,7 @@
   }
 
   function toggleRecording() {
+    if (isInputDisabled) return;
     isRecording = !isRecording;
   }
 
@@ -203,6 +230,41 @@
     }
   }
 
+  function openTaskSwitcher() {
+    showTaskSwitcher = true;
+  }
+
+  function closeTaskSwitcher() {
+    showTaskSwitcher = false;
+  }
+
+  // 处理任务切换器键盘导航
+  function handleTaskSwitcherKeydown(event: KeyboardEvent) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openTaskSwitcher();
+    }
+  }
+
+  // 监听全局 ESC 键
+  function handleGlobalKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape" && showTaskSwitcher) {
+      showTaskSwitcher = false;
+    }
+  }
+
+  // 处理弹窗背景点击和键盘导航
+  function handleModalBackgroundClick() {
+    closeTaskSwitcher();
+  }
+
+  function handleModalBackgroundKeydown(event: KeyboardEvent) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      closeTaskSwitcher();
+    }
+  }
+
   $effect(() => {
     if (inputElement) {
       // 初始化输入框高度
@@ -211,10 +273,12 @@
 
       updateContainerHeight();
 
-      // 自动聚焦到输入框
-      setTimeout(() => {
-        inputElement.focus();
-      }, 100);
+      // 如果有任务才自动聚焦到输入框
+      if (hasTask) {
+        setTimeout(() => {
+          inputElement.focus();
+        }, 100);
+      }
 
       return () => {
         if (animationFrame) {
@@ -228,8 +292,12 @@
     const handleResize = () => updateContainerHeight();
     window.addEventListener("resize", handleResize);
 
+    // 添加全局键盘事件监听
+    document.addEventListener("keydown", handleGlobalKeydown);
+
     return () => {
       window.removeEventListener("resize", handleResize);
+      document.removeEventListener("keydown", handleGlobalKeydown);
     };
   });
 
@@ -257,9 +325,10 @@
     <div
       class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700
              transition-all duration-300 hover:shadow-xl group w-full"
-      class:ring-2={message.length > 0}
-      class:ring-blue-500={message.length > 0}
-      class:ring-opacity-50={message.length > 0}
+      class:ring-2={message.length > 0 && hasTask}
+      class:ring-blue-500={message.length > 0 && hasTask}
+      class:ring-opacity-50={message.length > 0 && hasTask}
+      class:opacity-60={!hasTask}
     >
       <!-- 动态背景 -->
       <div
@@ -270,10 +339,12 @@
         <!-- 附件按钮 -->
         <button
           type="button"
+          disabled={isInputDisabled}
           class="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
                  rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200
-                 hover:scale-110 active:scale-95"
-          onkeydown={(e) => e.key === "Enter" && e.currentTarget.click()}
+                 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          onkeydown={(e) =>
+            e.key === "Enter" && !isInputDisabled && e.currentTarget.click()}
           in:fly={{ x: -20, delay: 100 }}
         >
           <IconAttachment class="w-5 h-5" />
@@ -287,13 +358,15 @@
           onkeydown={handleKeydown}
           onfocusin={handleFocus}
           onfocusout={handleBlur}
-          {placeholder}
-          {disabled}
+          placeholder={hasTask ? placeholder : "请先选择任务"}
+          disabled={isInputDisabled}
+          readonly={!hasTask}
           rows="1"
           class="flex-1 w-full resize-none bg-transparent border-0 focus:ring-0 focus:outline-none
                  text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400
                  text-base leading-6 min-h-[24px] scrollbar-thin scrollbar-thumb-gray-300
-                 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+                 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent
+                 disabled:cursor-not-allowed disabled:opacity-70"
           style="height: {currentInputHeight}px; transition: none; overflow-y: hidden;"
         ></textarea>
 
@@ -301,8 +374,11 @@
         <button
           type="button"
           onclick={toggleRecording}
-          onkeydown={(e) => e.key === "Enter" && toggleRecording()}
+          onkeydown={(e) =>
+            e.key === "Enter" && !isInputDisabled && toggleRecording()}
+          disabled={isInputDisabled}
           class="flex-shrink-0 p-2 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95
+                 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
                  {isRecording
             ? 'text-red-500 bg-red-100 dark:bg-red-900 dark:bg-opacity-20'
             : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
@@ -318,10 +394,10 @@
           type="button"
           onclick={handleSubmit}
           onkeydown={(e) => e.key === "Enter" && handleSubmit()}
-          disabled={!message.trim() || disabled}
+          disabled={!message.trim() || isInputDisabled}
           class="flex-shrink-0 p-2 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95
                  disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-                 {message.trim()
+                 {message.trim() && hasTask
             ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-lg'
             : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
           in:fly={{ x: 20, delay: 300 }}
@@ -331,7 +407,7 @@
       </div>
 
       <!-- 扩展指示器 -->
-      {#if isExpanded}
+      {#if isExpanded && hasTask}
         <div
           class="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-0.5
                  bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
@@ -343,7 +419,7 @@
 
     <!-- 帮助信息 -->
     <div
-      class="flex items-center justify-between mt-2 px-2 text-xs text-gray-500 dark:text-gray-400 w-full"
+      class="flex items-center justify-between mt-2 px-2 text-xs text-gray-500 dark:text-gray-400 w-full relative"
     >
       <div class="flex items-center gap-4">
         <div class="flex items-center gap-1">
@@ -351,7 +427,8 @@
           <span>Enter 发送</span>
         </div>
         <div>Ctrl + Enter 换行</div>
-        <!-- 始终显示字符数统计 -->
+
+        <!-- 字符数统计 -->
         <div
           class="text-blue-500 dark:text-blue-400 font-mono"
           class:text-amber-500={message.length > 1500}
@@ -362,6 +439,19 @@
           {message.length}/6000
         </div>
       </div>
+
+      <!-- 任务名称显示（居中） -->
+      <div class="absolute left-1/2 transform -translate-x-1/2">
+        <button
+          type="button"
+          onclick={openTaskSwitcher}
+          class="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300
+             transition-colors duration-200 cursor-pointer underline-offset-2 hover:underline"
+        >
+          {hasTask ? currentTaskStore.value.name : "无任务"}
+        </button>
+      </div>
+
       <div class="flex items-center gap-2">
         {#if isRecording}
           <div class="flex items-center gap-1 text-red-500">
@@ -373,6 +463,35 @@
     </div>
   </div>
 </div>
+
+<!-- 任务切换器弹窗 -->
+{#if showTaskSwitcher}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    onclick={handleModalBackgroundClick}
+    onkeydown={handleModalBackgroundKeydown}
+    tabindex="0"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="task-switcher-title"
+    in:fade={{ duration: 200 }}
+    out:fade={{ duration: 200 }}
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700
+         max-w-md w-full mx-4 max-h-[80vh] overflow-hidden"
+      onclick={(e) => e.stopPropagation()}
+      role="button"
+      tabindex="-1"
+      in:fly={{ y: 20, duration: 300 }}
+      out:fly={{ y: 20, duration: 200 }}
+    >
+      <TaskSwitcher />
+    </div>
+  </div>
+{/if}
 
 <!-- 动态占位元素 -->
 <div
