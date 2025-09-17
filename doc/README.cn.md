@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-0.0.1-green.svg)](https://github.com/masol/logicai/releases)
 
-[English](README.cn.md.md) |  **中文**
+[English](../README.md) |  **中文**
 
 ---
 # 项目概述
