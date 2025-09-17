@@ -15,13 +15,13 @@
 
 # Project Overview
 
-This project aims to build an automatic task decomposition system based on logical reasoning, achieving complex task decomposition and orchestration by treating Large Language Model (LLM) calls as idempotent functions. The core of the system lies in combining the intuitive reasoning capabilities of LLMs with formal logical systems, implementing continuous iteration of task decomposition and orchestration through constructing and maintaining an ontological space.
+This project aims to build an intelligent task decomposition system based on logical reasoning. By treating Large Language Model (LLM) calls as idempotent functions, it achieves automated decomposition of complex tasks and workflow orchestration. The core innovation of the system lies in combining the intuitive reasoning capabilities of LLMs with formal logical systems, constructing and maintaining an ontological knowledge space to enable recursive task decomposition and automatic workflow generation and optimization.
 
-In this framework, both inputs and outputs of LLMs are treated as structured data, and the composition of prompts follows this principle as well, no longer viewing them as semantics but as collections of logical dimensions. For example, when we refine prompts by requesting "more accessible" or "more professional" writing, these requirements are viewed by LogicAI as adding new dimensions to the input data—specifically manifested as adding entries such as "readability level" and "professional degree" to the structured data. These attribute names can be dynamically obtained through LLMs, equivalent to type elevation in logic—similar to asking "What is an apple?" -> "An apple is a fruit," then further asking "What is a fruit?" -> "A fruit is a plant product," recursively obtaining the complete classification chain: apple → fruit → plant product → biological product → matter. This structured perspective enables the system to introduce logical systems to process and optimize system workflows.
+In this framework, all inputs and outputs are treated as structured data, including prompt design which follows this principle. For example, when we ask an LLM to process information in a "more accessible" or "more professional" manner, these requirements are viewed by LogicAI as adding new dimensions to the data structure - specifically manifested as adding entries like "readability level" and "professionalism degree" to the structured data. These attribute names can be dynamically obtained through LLMs, equivalent to type elevation in logic - like asking "What is an apple?" -> "An apple is a fruit", then asking "What is a fruit?" -> "A fruit is a plant product", recursively obtaining the complete classification chain: apple → fruit → plant product → biological product → matter. This structured perspective enables the system to process and optimize various seemingly ambiguous human requirements in a logical manner.
 
-The entire system combines logic-based formal systems with neuron-based LLMs (viewed as intuition), transferring system complexity from the LLM level to the architectural level, keeping each subtask entering the LLM within a controllable complexity range, thereby improving the complexity the system can handle—treating the entire system as an input/output entity, it can be viewed as an "external augmentation model" that enhances LLM capabilities.
+The entire system combines formal logical systems with neuron-based LLMs (viewed as intuition), transferring system complexity from the LLM level to the architectural level, keeping each sub-task entering the LLM within a controllable complexity range, thereby improving the overall system's reliability and maintainability.
 
-# Core Concept Clarification
+# Explanation of core concepts
 
 To better understand the design philosophy of this project, we can analogize it to the knowledge system of production line design:
 
@@ -36,37 +36,50 @@ The engineer possesses professional knowledge about industrial design, process o
 
 Similarly, imagine a Prolog program with sufficient knowledge that can autonomously "design" production lines based on logical rules. In our system:
 
-**Design-level knowledge** (ontological space) includes:
+**Design Layer Knowledge** (Ontological Space):
 
-- Logical rules for task decomposition
-- Classification systems for input/output types
-- Processing constraints for various data types
-- Best practices for workflow design
+Taking coffee table floral selection as an example: designers filter suitable flowers in the flower market through dimensions such as "size," "color," and "maintenance requirements." Correspondingly, we can construct prompts to enable LLMs to make selections by progressively adding constraint conditions like "size is XXX" and "color is XXX," ultimately making the LLM's decisions converge with the designer's judgment.
 
-**Execution-level knowledge** (workflow usage) includes:
+This example demonstrates LogicAI's core philosophy: redefining prompts from semantic expressions to structured data of dimensional combinations. These dimensions are not arbitrarily determined, but derived through logical reasoning from the real-world constraints that the delivery target (flowers) must satisfy, such as coffee table compatibility and user preferences.
 
-- Specific execution steps
-- Parameter configuration methods
-- Input/output format requirements
+The key lies in clearly separating the logic system construction task: through specially designed meta-prompts, enabling the LLM to systematically explore decision dimensions, automatically derive constraint conditions and logical rules, and ultimately construct a complete rule base.
+
+**Execution Layer Knowledge** (Workflow Usage):
+
+For residents, as long as the flowers can bring emotional pleasure, there is no need to master the aforementioned design layer knowledge. In other words, whether a solidified workflow (Agent) can meet requirements depends on functional implementation rather than implementation methods—regardless of whether it's manually designed or AI-generated.
+
+However, when residents hope to achieve emotional tranquility through flowers due to insomnia, existing Agents need improvement. Such improvements rely on design layer knowledge and require Agent designers to update the system. Therefore, Agents designed with current context engineering are only suitable for relatively stable application scenarios, and struggle to meet dynamic demands in real-world domains with frequent changes, such as novel writing and programming development.
+
+Further reflection reveals that in the real world, if flowers are merely one component in a resident's product offering to their users, the resident themselves becomes a designer and can adopt the same approach. This creates nested calling relationships between workflows—though the current version does not yet support this feature.
 
 **Difference from Chain of Thought (COT)**:
 
 - COT method: Guides LLM linear thinking through "step by step" prompts
 - Our method: First obtains initial workflow by asking "what are the best practice steps to achieve XXX deliverables" (leveraging LLM intuition), then performs type analysis on inputs/outputs of each workflow step, builds classification trees, recursively explores processing rules, forming a logical world. By querying this logical world to analyze and improve workflows, the logical world (ontological space) and workflow implementation evolve synchronously during this process.
 
-# Problems Solved
+**Differences from Reasoning + Acting (ReAct)**:
+
+- ReAct Method: The ReAct method adopts an AI problem-solving pattern of Reasoning + Acting + Observation, but its reasoning component relies on manual design and lacks a systematic design methodology.
+- This Method: This method focuses on optimizing the reasoning component by replacing manual design with algorithmic approaches, achieving automated construction of the reasoning process.
+
+**Difference from Plan-and-Execute**:
+
+- Plan-and-Execute is a classic pattern in the LangChain framework that decomposes complex tasks into two separate stages: planning and execution. This approach faces a fundamental contradiction between abstraction levels and execution precision—high-level planning may lose critical context, while detailed planning may sacrifice system flexibility. Current practices with automated development tools like claude-code and Cursor demonstrate this challenge: even when focusing the abstraction level on software development domains, issues such as inconsistent code architecture and module interface conflicts still arise due to context loss.
+- This method adopts a different design philosophy: modeling LLM calls as idempotent functions and maintaining dimensional relationships between inputs and outputs through a logical system. In theory, this can ensure system flexibility while preserving context integrity, potentially avoiding the disconnect between abstraction and execution. This makes ultra-large-scale tasks such as complete novel creation and large-scale software development possible—refer to the long-term vision below for more possibilities.
+
+# Problems to Solve
 
 ## 1. Complexity Control Issues in LLM Applications
 
-Current LLMs often experience performance degradation or unstable outputs when processing complex tasks due to overly long contexts or deeply nested tasks. Traditional context/prompt engineering struggles to systematically manage task complexity.
+Existing LLMs suffer from decreased accuracy and logical confusion in complex tasks, while optimization methods such as prompt engineering remain constrained by the boundaries of model capabilities.
 
-## 2. Inexplicability of AI Systems
+## 2. Lack of Interpretability in AI Systems
 
-Most LLM-based systems lack clear reasoning paths, making it difficult to trace decision processes, which becomes a critical obstacle in applications requiring high reliability.
+Most LLM-based systems lack clear reasoning paths, making it difficult to trace decision-making processes, which becomes a critical obstacle in applications requiring high reliability.
 
-## 3. Disconnection Between Knowledge and Reasoning
+## 3. The Disconnect Between Logic and Intuition
 
-There's a lack of effective bridges between LLMs' intuitive reasoning and formal logical systems, making it difficult to combine LLM capabilities with traditional knowledge engineering methods.
+There is a lack of effective bridge between LLM's intuitive reasoning and expert systems' formal logical reasoning. Intuitive reasoning excels at pattern recognition, while logical reasoning ensures rigor, but the two are difficult to integrate, limiting AI applications in complex scenarios.
 
 # Solution
 

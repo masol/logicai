@@ -1,4 +1,5 @@
 import { rpc } from '@app/preload'
+import { type AiTask } from './chatStore';
 
 class AndroidNameStore {
     private store = $state<string>("指挥官");
@@ -12,15 +13,11 @@ class AndroidNameStore {
     }
 }
 
-export interface Task {
-    id: string;
-    name: string;
-}
-
 class CurrentTaskStore {
-    private store = $state<Task>({
+    private store = $state<AiTask>({
         id: "",
-        name: ""
+        name: "",
+        time: ""
     });
 
     get value() {
@@ -28,9 +25,10 @@ class CurrentTaskStore {
     }
 
     set(task: any) {
-        const newValue: Task = {
+        const newValue: AiTask = {
             id: (task && typeof task.id === 'string') ? task.id : "",
-            name: (task && typeof task.name === 'string') ? task.name : ""
+            name: (task && typeof task.name === 'string') ? task.name : "",
+            time: (task && typeof task.name === 'string') ? task.time : ""
         };
         this.store = newValue;
     }
@@ -44,5 +42,5 @@ export const currentTaskStore = new CurrentTaskStore();
 
 export async function initSharedStores() {
     androidNameStore.set(await rpc.sys.get("androidName"));
-    currentTaskStore.set(await rpc.sys.get("currentTask"))
+    currentTaskStore.set(await rpc.task.current());
 }

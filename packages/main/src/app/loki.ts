@@ -19,6 +19,7 @@ interface CollectionInterface<T = any> {
   insertMany(docs: Omit<T, "$loki" | "meta">[]): T[];
   findOne(query?: LokiQuery<T>): T | null;
   find(query?: LokiQuery<T>, options?: QueryOptions): T[];
+  findAll(options?: QueryOptions): T[]; // 新增：获取全部数据
   findById(id: number | string): T | null;
   update(doc: T): T;
   updateWhere(query: LokiQuery<T>, updateObj: Partial<T>): number;
@@ -117,6 +118,18 @@ export class LokiDatabase {
     });
   }
 
+  // 新增：获取数据库中所有集合的全部数据
+  public getAllData(): Record<string, any[]> {
+    const result: Record<string, any[]> = {};
+    const collections = this.db.listCollections();
+
+    collections.forEach((coll) => {
+      result[coll.name] = coll.data;
+    });
+
+    return result;
+  }
+
   // 泛型 Collection 操作接口
   public collection<T = any>(name: string): CollectionInterface<T> {
     let coll = this.db.getCollection(name);
@@ -162,6 +175,31 @@ export class LokiDatabase {
         return chain.data() as T[];
       },
 
+      // 新增：获取集合中的全部数据
+      findAll: (options?: QueryOptions): T[] => {
+        let chain = coll!.chain();
+
+        if (options?.sort) {
+          // 检查是否是降序排序（以 '-' 开头）
+          if (options.sort.startsWith('-')) {
+            const field = options.sort.substring(1);
+            chain = chain.simplesort(field, { desc: true });
+          } else {
+            chain = chain.simplesort(options.sort, { desc: false });
+          }
+        }
+
+        if (options?.offset) {
+          chain = chain.offset(options.offset);
+        }
+
+        if (options?.limit) {
+          chain = chain.limit(options.limit);
+        }
+
+        return chain.data() as T[];
+      },
+
       // 根据 ID 查找
       findById: (id: number | string): T | null => {
         if (typeof id === 'number') {
@@ -179,7 +217,6 @@ export class LokiDatabase {
       // 根据查询更新
       updateWhere: (query: LokiQuery<T>, updateObj: Partial<T>): number => {
         const docs = coll!.find(query as any);
-        // console.log("find docs=",docs)
         docs.forEach((doc) => {
           Object.assign(doc, updateObj);
           coll!.update(doc);
@@ -201,15 +238,12 @@ export class LokiDatabase {
 
       // 根据 ID 删除
       removeById: (id: number | string): boolean => {
-        // console.log("removeById:",id)
         let doc;
         if (typeof id === 'number') {
           doc = coll!.get(id);
         } else {
-          // 处理字符串 ID，假设自定义 ID 字段名为 'id'
           doc = coll.findOne({ id: id });
         }
-        // console.log("found by id:",doc)
         if (doc) {
           coll!.remove(doc);
           return true;
@@ -276,59 +310,21 @@ export class LokiDatabase {
   }
 }
 
-/*
 
-// 定义类型
-interface User {
-  $loki?: number;
-  meta?: any;
-  id: string;
-  name: string;
-  email: string;
-  age: number;
-  createdAt: Date;
-}
 
-interface Post {
-  $loki?: number;
-  meta?: any;
-  id: string;
-  title: string;
-  content: string;
-  authorId: string;
-  tags: string[];
-  publishedAt?: Date;
-}
 
-// 使用类型化的 collection
-const db = new LokiDatabase({ dbPath: './data' });
+// // 获取特定集合的全部数据
+// const users = db.collection<User>('users');
+// const allUsers = users.findAll(); // 获取所有用户
 
-// 有类型提示和检查的 collection
-const users = db.collection<User>('users');
-const posts = db.collection<Post>('posts');
+// // 带排序和分页的全部数据
+// const sortedUsers = users.findAll({
+//   sort: 'name', //-name 降序排列
+//   limit: 100,
+//   offset: 0
+// });
 
-// 插入时有类型检查，不需要包含 $loki 和 meta
-const user = users.insert({
-  id: '1',
-  name: 'John Doe',
-  email: 'john@example.com',
-  age: 30,
-  createdAt: new Date()
-});
-
-// 查询时有类型提示
-const foundUsers = users.find({
-  age: { $gte: 18 },
-  name: { $regex: /john/i }
-});
-
-// 更新时有类型检查
-users.updateWhere(
-  { age: { $lt: 18 } },
-  { age: 18 } // 这里会有类型检查
-);
-
-// 如果不指定类型，默认是 any
-const logs = db.collection('logs'); // CollectionInterface<any>
-logs.insert({ level: 'info', message: 'test' }); // 可以插入任意结构
-*/
+// // 获取数据库中所有集合的全部数据
+// const allData = db.getAllData();
+// console.log(allData.users); // 所有用户数据
+// console.log(allData.posts); // 所有文章数据

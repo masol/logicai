@@ -10,7 +10,6 @@ export interface MessageContent {
         type: string;
         desc?: string;
     }[];
-    taskid: string; //添加所属task，用来缩减token消耗。
     progressId?: string;
     progressCtx?: string[];
 }
@@ -18,6 +17,7 @@ export interface MessageContent {
 export interface Message {
     id: string;
     type: "ai" | "user" | "sys";
+    taskId: string;  //添加所属task，用来缩减token消耗。
     content: MessageContent;
     timestamp: number;
 }
@@ -183,6 +183,7 @@ export class History {
             CREATE TABLE messages (
                 id TEXT PRIMARY KEY,
                 type TEXT NOT NULL CHECK(type IN ('ai', 'user', 'sys')),
+                task_id TEXT NOT NULL,
                 content_json TEXT NOT NULL,
                 content_text TEXT NOT NULL,
                 content_tokens TEXT NOT NULL,
@@ -201,6 +202,7 @@ export class History {
             await this.execAsync(`
                 CREATE VIRTUAL TABLE messages_fts USING fts5(
                     id UNINDEXED,
+                    task_id UNINDEXED,
                     content_tokens,
                     content='messages',
                     content_rowid='rowid',
@@ -213,6 +215,7 @@ export class History {
             await this.execAsync(`
                 CREATE VIRTUAL TABLE messages_fts USING fts4(
                     id,
+                    task_id,
                     content_tokens,
                     tokenize=unicode61
                 )
@@ -223,6 +226,8 @@ export class History {
 
     private async ensureIndexes(): Promise<void> {
         const indexes = [
+            { name: 'idx_messages_task_id', sql: 'CREATE INDEX IF NOT EXISTS idx_messages_task_id ON messages(task_id)' },
+            { name: 'idx_messages_task_timestamp', sql: 'CREATE INDEX IF NOT EXISTS idx_messages_task_timestamp ON messages(task_id, timestamp DESC)' },
             { name: 'idx_messages_timestamp', sql: 'CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp DESC)' },
             { name: 'idx_messages_type', sql: 'CREATE INDEX IF NOT EXISTS idx_messages_type ON messages(type)' },
             { name: 'idx_messages_progress_id', sql: 'CREATE INDEX IF NOT EXISTS idx_messages_progress_id ON messages(progress_id)' },
@@ -248,8 +253,8 @@ export class History {
                 name: 'messages_ai',
                 sql: `
                     CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
-                        INSERT INTO messages_fts(rowid, id, content_tokens) 
-                        VALUES (new.rowid, new.id, new.content_tokens);
+                        INSERT INTO messages_fts(rowid, id, task_id, content_tokens) 
+                        VALUES (new.rowid, new.id, new.task_id, new.content_tokens);
                     END
                 `
             },
@@ -257,8 +262,8 @@ export class History {
                 name: 'messages_ad',
                 sql: `
                     CREATE TRIGGER IF NOT EXISTS messages_ad AFTER DELETE ON messages BEGIN
-                        INSERT INTO messages_fts(messages_fts, rowid, id, content_tokens) 
-                        VALUES ('delete', old.rowid, old.id, old.content_tokens);
+                        INSERT INTO messages_fts(messages_fts, rowid, id, task_id, content_tokens) 
+                        VALUES ('delete', old.rowid, old.id, old.task_id, old.content_tokens);
                     END
                 `
             },
@@ -267,10 +272,10 @@ export class History {
                 sql: `
                     CREATE TRIGGER IF NOT EXISTS messages_au AFTER UPDATE ON messages 
                     WHEN old.content_tokens != new.content_tokens BEGIN
-                        INSERT INTO messages_fts(messages_fts, rowid, id, content_tokens) 
-                        VALUES ('delete', old.rowid, old.id, old.content_tokens);
-                        INSERT INTO messages_fts(rowid, id, content_tokens) 
-                        VALUES (new.rowid, new.id, new.content_tokens);
+                        INSERT INTO messages_fts(messages_fts, rowid, id, task_id, content_tokens) 
+                        VALUES ('delete', old.rowid, old.id, old.task_id, old.content_tokens);
+                        INSERT INTO messages_fts(rowid, id, task_id, content_tokens) 
+                        VALUES (new.rowid, new.id, new.task_id, new.content_tokens);
                     END
                 `
             },
@@ -303,6 +308,7 @@ export class History {
         const columnNames = tableInfo.map(col => col.name);
 
         const newColumns = [
+            { name: 'task_id', sql: 'ALTER TABLE messages ADD COLUMN task_id TEXT' },
             { name: 'created_at', sql: 'ALTER TABLE messages ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP' },
             { name: 'updated_at', sql: 'ALTER TABLE messages ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP' },
             { name: 'progress_id', sql: 'ALTER TABLE messages ADD COLUMN progress_id TEXT' },
@@ -313,6 +319,17 @@ export class History {
             if (!columnNames.includes(column.name)) {
                 console.log(`升级数据库schema：添加${column.name}列`);
                 await this.execAsync(column.sql);
+
+                // 如果添加了task_id列，需要为现有数据提供默认值
+                if (column.name === 'task_id') {
+                    await this.execAsync("UPDATE messages SET task_id = 'default' WHERE task_id IS NULL");
+                    // 创建NOT NULL约束
+                    await this.execAsync("CREATE TABLE messages_new AS SELECT * FROM messages");
+                    await this.execAsync("DROP TABLE messages");
+                    await this.createMainTable();
+                    await this.execAsync("INSERT INTO messages SELECT * FROM messages_new");
+                    await this.execAsync("DROP TABLE messages_new");
+                }
             }
         }
 
@@ -383,6 +400,7 @@ export class History {
     private rowToMessage(row: {
         id: string;
         type: string;
+        task_id: string;
         content_json: string;
         progress_id: string | null;
         progress_ctx_json: string | null;
@@ -401,6 +419,7 @@ export class History {
         return {
             id: row.id,
             type: row.type as "ai" | "user" | "sys",
+            taskId: row.task_id,
             content: content,
             timestamp: row.timestamp
         };
@@ -462,11 +481,12 @@ export class History {
             const progressCtxJson = message.content.progressCtx ? JSON.stringify(message.content.progressCtx) : null;
 
             await this.runAsync(`
-                INSERT INTO messages (id, type, content_json, content_text, content_tokens, progress_id, progress_ctx_json, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO messages (id, type, task_id, content_json, content_text, content_tokens, progress_id, progress_ctx_json, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 message.id,
                 message.type,
+                message.taskId,
                 contentJson,
                 contentText,
                 contentTokens,
@@ -503,11 +523,12 @@ export class History {
                 const progressCtxJson = message.content.progressCtx ? JSON.stringify(message.content.progressCtx) : null;
 
                 await this.runAsync(`
-                    INSERT OR REPLACE INTO messages (id, type, content_json, content_text, content_tokens, progress_id, progress_ctx_json, timestamp)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO messages (id, type, task_id, content_json, content_text, content_tokens, progress_id, progress_ctx_json, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `, [
                     message.id,
                     message.type,
+                    message.taskId,
                     contentJson,
                     contentText,
                     contentTokens,
@@ -574,12 +595,13 @@ export class History {
 
         try {
             const row = await this.getAsync(`
-                SELECT id, type, content_json, progress_id, progress_ctx_json, timestamp
+                SELECT id, type, task_id, content_json, progress_id, progress_ctx_json, timestamp
                 FROM messages
                 WHERE id = ?
             `, [messageId]) as {
                 id: string;
                 type: string;
+                task_id: string;
                 content_json: string;
                 progress_id: string | null;
                 progress_ctx_json: string | null;
@@ -596,20 +618,30 @@ export class History {
     /**
      * 根据progressId获取相关消息
      */
-    public async getMessagesByProgressId(progressId: string): Promise<Message[]> {
+    public async getMessagesByProgressId(progressId: string, taskId?: string): Promise<Message[]> {
         if (!this.isInitialized) {
             throw new Error('数据库未初始化完成');
         }
 
         try {
-            const rows = await this.allAsync(`
-                SELECT id, type, content_json, progress_id, progress_ctx_json, timestamp
+            let sql = `
+                SELECT id, type, task_id, content_json, progress_id, progress_ctx_json, timestamp
                 FROM messages
                 WHERE progress_id = ?
-                ORDER BY timestamp ASC
-            `, [progressId]) as Array<{
+            `;
+            const params: any[] = [progressId];
+
+            if (taskId) {
+                sql += ' AND task_id = ?';
+                params.push(taskId);
+            }
+
+            sql += ' ORDER BY timestamp ASC';
+
+            const rows = await this.allAsync(sql, params) as Array<{
                 id: string;
                 type: string;
+                task_id: string;
                 content_json: string;
                 progress_id: string | null;
                 progress_ctx_json: string | null;
@@ -624,9 +656,9 @@ export class History {
     }
 
     /**
-     * 分页获取消息
+     * 分页获取指定taskId的消息
      */
-    public async getMessages(offset: number = 0, limit: number = 30): Promise<HistoryLoadResult> {
+    public async getMessages(taskId: string, offset: number = 0, limit: number = 30): Promise<HistoryLoadResult> {
         if (!this.isInitialized) {
             throw new Error('数据库未初始化完成');
         }
@@ -634,19 +666,21 @@ export class History {
         try {
             const [rows, countResult] = await Promise.all([
                 this.allAsync(`
-                    SELECT id, type, content_json, progress_id, progress_ctx_json, timestamp
+                    SELECT id, type, task_id, content_json, progress_id, progress_ctx_json, timestamp
                     FROM messages
+                    WHERE task_id = ?
                     ORDER BY timestamp DESC
                     LIMIT ? OFFSET ?
-                `, [limit, offset]) as Promise<Array<{
+                `, [taskId, limit, offset]) as Promise<Array<{
                     id: string;
                     type: string;
+                    task_id: string;
                     content_json: string;
                     progress_id: string | null;
                     progress_ctx_json: string | null;
                     timestamp: number;
                 }>>,
-                this.getAsync(`SELECT COUNT(*) as total FROM messages`) as Promise<{ total: number }>
+                this.getAsync(`SELECT COUNT(*) as total FROM messages WHERE task_id = ?`, [taskId]) as Promise<{ total: number }>
             ]);
 
             const messages = rows.map(row => this.rowToMessage(row));
@@ -660,9 +694,31 @@ export class History {
     }
 
     /**
-     * 搜索消息内容
+     * 获取所有taskId列表
      */
-    public async searchMessages(query: string, limit: number = 50): Promise<Message[]> {
+    public async getTaskIds(): Promise<string[]> {
+        if (!this.isInitialized) {
+            throw new Error('数据库未初始化完成');
+        }
+
+        try {
+            const rows = await this.allAsync(`
+                SELECT DISTINCT task_id 
+                FROM messages 
+                ORDER BY MAX(timestamp) DESC
+            `) as Array<{ task_id: string }>;
+
+            return rows.map(row => row.task_id);
+        } catch (error) {
+            console.error('获取任务ID列表失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 搜索指定taskId下的消息内容
+     */
+    public async searchMessages(query: string, taskId?: string, limit: number = 50): Promise<Message[]> {
         if (!this.isInitialized) {
             throw new Error('数据库未初始化完成');
         }
@@ -682,16 +738,26 @@ export class History {
                 .map(token => `"${token.replace(/"/g, '""')}"*`)  // 转义双引号
                 .join(' OR ');
 
-            const rows = await this.allAsync(`
-                SELECT m.id, m.type, m.content_json, m.progress_id, m.progress_ctx_json, m.timestamp
+            let sql = `
+                SELECT m.id, m.type, m.task_id, m.content_json, m.progress_id, m.progress_ctx_json, m.timestamp
                 FROM messages_fts f
                 JOIN messages m ON f.id = m.id
                 WHERE messages_fts MATCH ?
-                ORDER BY rank, m.timestamp DESC
-                LIMIT ?
-            `, [ftsQuery, limit]) as Array<{
+            `;
+            const params: any[] = [ftsQuery];
+
+            if (taskId) {
+                sql += ' AND m.task_id = ?';
+                params.push(taskId);
+            }
+
+            sql += ' ORDER BY rank, m.timestamp DESC LIMIT ?';
+            params.push(limit);
+
+            const rows = await this.allAsync(sql, params) as Array<{
                 id: string;
                 type: string;
+                task_id: string;
                 content_json: string;
                 progress_id: string | null;
                 progress_ctx_json: string | null;
@@ -703,15 +769,25 @@ export class History {
             console.error('搜索消息失败:', error);
             // 如果FTS搜索失败，退回到简单的LIKE搜索
             try {
-                const rows = await this.allAsync(`
-                    SELECT id, type, content_json, progress_id, progress_ctx_json, timestamp
+                let sql = `
+                    SELECT id, type, task_id, content_json, progress_id, progress_ctx_json, timestamp
                     FROM messages
                     WHERE content_text LIKE ?
-                    ORDER BY timestamp DESC
-                    LIMIT ?
-                `, [`%${query}%`, limit]) as Array<{
+                `;
+                const params: any[] = [`%${query}%`];
+
+                if (taskId) {
+                    sql += ' AND task_id = ?';
+                    params.push(taskId);
+                }
+
+                sql += ' ORDER BY timestamp DESC LIMIT ?';
+                params.push(limit);
+
+                const rows = await this.allAsync(sql, params) as Array<{
                     id: string;
                     type: string;
+                    task_id: string;
                     content_json: string;
                     progress_id: string | null;
                     progress_ctx_json: string | null;
@@ -744,6 +820,23 @@ export class History {
     }
 
     /**
+     * 删除指定taskId的所有消息
+     */
+    public async deleteTaskMessages(taskId: string): Promise<number> {
+        if (!this.isInitialized) {
+            throw new Error('数据库未初始化完成');
+        }
+
+        try {
+            const result = await this.runAsync(`DELETE FROM messages WHERE task_id = ?`, [taskId]);
+            return result.changes || 0;
+        } catch (error) {
+            console.error('删除任务消息失败:', error);
+            throw error;
+        }
+    }
+
+    /**
      * 清除所有消息
      */
     public async clearAll(): Promise<void> {
@@ -761,32 +854,42 @@ export class History {
     }
 
     /**
-     * 重新加载最近的消息
+     * 重新加载指定taskId的最近消息
      */
-    public async loadRecentMessages(): Promise<HistoryLoadResult> {
-        return this.getMessages(0, 30);
+    public async loadRecentMessages(taskId: string): Promise<HistoryLoadResult> {
+        return this.getMessages(taskId, 0, 30);
     }
 
     /**
      * 获取数据库统计信息
      */
-    public async getStats(): Promise<{
+    public async getStats(taskId?: string): Promise<{
         totalMessages: number;
         messagesByType: { ai: number; user: number; sys: number };
         oldestMessage?: number;
         newestMessage?: number;
         databaseSize: number;
+        taskCount?: number;
     }> {
         if (!this.isInitialized) {
             throw new Error('数据库未初始化完成');
         }
 
         try {
-            const [totalResult, typeResults, timestampResult, dbInfo] = await Promise.all([
-                this.getAsync(`SELECT COUNT(*) as total FROM messages`) as Promise<{ total: number }>,
-                this.allAsync(`SELECT type, COUNT(*) as count FROM messages GROUP BY type`) as Promise<Array<{ type: string; count: number }>>,
-                this.getAsync(`SELECT MIN(timestamp) as oldest, MAX(timestamp) as newest FROM messages`) as Promise<{ oldest?: number; newest?: number }>,
-                this.getDatabaseInfo()
+            let whereClause = '';
+            const params: any[] = [];
+
+            if (taskId) {
+                whereClause = 'WHERE task_id = ?';
+                params.push(taskId);
+            }
+
+            const [totalResult, typeResults, timestampResult, dbInfo, taskCountResult] = await Promise.all([
+                this.getAsync(`SELECT COUNT(*) as total FROM messages ${whereClause}`, params) as Promise<{ total: number }>,
+                this.allAsync(`SELECT type, COUNT(*) as count FROM messages ${whereClause} GROUP BY type`, params) as Promise<Array<{ type: string; count: number }>>,
+                this.getAsync(`SELECT MIN(timestamp) as oldest, MAX(timestamp) as newest FROM messages ${whereClause}`, params) as Promise<{ oldest?: number; newest?: number }>,
+                this.getDatabaseInfo(),
+                taskId ? Promise.resolve(null) : this.getAsync(`SELECT COUNT(DISTINCT task_id) as count FROM messages`) as Promise<{ count: number } | null>
             ]);
 
             const messagesByType = { ai: 0, user: 0, sys: 0 };
@@ -796,13 +899,19 @@ export class History {
                 }
             });
 
-            return {
+            const stats: any = {
                 totalMessages: totalResult.total,
                 messagesByType,
                 oldestMessage: timestampResult.oldest,
                 newestMessage: timestampResult.newest,
                 databaseSize: dbInfo.size
             };
+
+            if (taskCountResult) {
+                stats.taskCount = taskCountResult.count;
+            }
+
+            return stats;
         } catch (error) {
             console.error('获取统计信息失败:', error);
             throw error;

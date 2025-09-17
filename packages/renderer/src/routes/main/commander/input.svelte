@@ -6,6 +6,9 @@
   import IconKeyboard from "~icons/mdi/keyboard";
   import { currentTaskStore } from "$lib/stores/shared.svelte";
   import TaskSwitcher from "./TaskSwitcher.svelte";
+  import NewTask from "./NewTask.svelte";
+  import IconAdd from "~icons/mdi/plus";
+  import { pipe, isEmpty, take } from "remeda";
 
   let {
     breadcrumbsLength = 0,
@@ -25,6 +28,7 @@
   let animationFrame = $state<number | null>(null);
   let isAtMaxHeight = $state(false);
   let showTaskSwitcher = $state(false);
+  let showNewTask = $state(false);
 
   // 使用 $derived 替换 $: 语法
   const hasTask = $derived(
@@ -88,6 +92,12 @@
         handleSubmit();
       }
     }
+  }
+
+  function handleCreateTask() {
+    setTimeout(() => {
+      showNewTask = true;
+    }, 100);
   }
 
   function calculateAndAnimateHeight() {
@@ -236,6 +246,14 @@
 
   function closeTaskSwitcher() {
     showTaskSwitcher = false;
+  }
+
+  function formatTaskName(text: string): string {
+    return pipe(
+      text,
+      (str) => (isEmpty(str.trim()) ? "无任务" : str),
+      (str) => (str.length > 9 ? take(str.split(""), 9).join("") + "..." : str),
+    );
   }
 
   // 处理任务切换器键盘导航
@@ -445,10 +463,20 @@
         <button
           type="button"
           onclick={openTaskSwitcher}
-          class="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300
-             transition-colors duration-200 cursor-pointer underline-offset-2 hover:underline"
+          class="mr-3 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300
+           transition-colors duration-200 cursor-pointer underline-offset-2 hover:underline
+           min-w-[80px] max-w-[120px] text-center inline-block
+           whitespace-nowrap overflow-hidden text-ellipsis"
         >
-          {hasTask ? currentTaskStore.value.name : "无任务"}
+          {formatTaskName(hasTask ? currentTaskStore.value.name : "")}
+        </button>
+        <button
+          onclick={() => (showNewTask = true)}
+          class="p-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-200 group"
+        >
+          <IconAdd
+            class="w-4 h-4 group-hover:scale-110 transition-transform duration-200"
+          />
         </button>
       </div>
 
@@ -464,34 +492,8 @@
   </div>
 </div>
 
-<!-- 任务切换器弹窗 -->
-{#if showTaskSwitcher}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-    onclick={handleModalBackgroundClick}
-    onkeydown={handleModalBackgroundKeydown}
-    tabindex="0"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="task-switcher-title"
-    in:fade={{ duration: 200 }}
-    out:fade={{ duration: 200 }}
-  >
-    <div
-      class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700
-         max-w-md w-full mx-4 max-h-[80vh] overflow-hidden"
-      onclick={(e) => e.stopPropagation()}
-      role="button"
-      tabindex="-1"
-      in:fly={{ y: 20, duration: 300 }}
-      out:fly={{ y: 20, duration: 200 }}
-    >
-      <TaskSwitcher />
-    </div>
-  </div>
-{/if}
+<TaskSwitcher bind:open={showTaskSwitcher} onCreateTask={handleCreateTask} />
+<NewTask bind:open={showNewTask} />
 
 <!-- 动态占位元素 -->
 <div

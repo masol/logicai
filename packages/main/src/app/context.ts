@@ -1,8 +1,10 @@
 import { LokiDatabase } from "./loki.js";
 import path from "node:path";
 import { History } from "./history.js";
+import { IAppContext } from "./context.type.js";
+import { TaskMan } from "./taskman.js";
 
-export class AppContext {
+export class AppContext implements IAppContext {
   #initstate = {
     db: false,
     history: false,
@@ -12,6 +14,7 @@ export class AppContext {
   readonly win: Electron.BrowserWindow;
   readonly db: LokiDatabase;
   readonly history: History;
+  readonly task: TaskMan;
 
   // key是id,保存为loki/${id}.json．
   readonly #subdb: Map<string, LokiDatabase> = new Map();
@@ -25,6 +28,7 @@ export class AppContext {
     this.db = new LokiDatabase(
       { dbPath },
       () => {
+        this.task.loadCurrent();
         this.onInitStep("db");
       }
     );
@@ -35,6 +39,8 @@ export class AppContext {
         this.onInitStep("history")
       }
     })
+
+    this.task = new TaskMan(this);
   }
 
   get inited(): boolean {

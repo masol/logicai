@@ -1,10 +1,9 @@
 /// 注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数，如同下例．
-import { type AppContext } from "../app/context.js";
+import { type IAppContext } from "../app/context.type.js";
 
 const colName = "setting";
-async function set(name: string, value: string) {
-    //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
-    const ctx: AppContext = this;
+
+export function setSetting(ctx: IAppContext, name: string, value: any) {
     const coll = ctx.db.collection(colName);
     const existingRecord = coll.findOne({ id: name });
     if (existingRecord) {
@@ -26,11 +25,15 @@ async function set(name: string, value: string) {
     }
 }
 
-async function get(name: string) {
+async function set(name: string, value: any) {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
-    const ctx: AppContext = this;
+    const ctx: IAppContext = this;
+    setSetting(ctx, name, value);
+}
+
+export function getSetting(ctx: IAppContext, name: string): any {
     switch (name) {
-        case 'inited':
+        case "inited":
             return ctx.inited;
     }
     const coll = ctx.db.collection(colName);
@@ -38,18 +41,12 @@ async function get(name: string) {
     return existingRecord?.value ?? "";
 }
 
-
-// 加载历史记录。
-async function history() {
+async function get(name: string) {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
-    const ctx: AppContext = this;
-    const result = await ctx.history.loadRecentMessages();
-    return result;
+    const ctx: IAppContext = this;
+    return getSetting(ctx, name)
 }
-
-
 export default {
     get,
-    set,
-    history
+    set
 };

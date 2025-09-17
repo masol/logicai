@@ -25,6 +25,12 @@ export interface ChatState {
     totalCount: number;
 }
 
+export interface AiTask {
+    id: string;
+    name: string;
+    time: string; // 最后更新时间。
+}
+
 function createChatStore() {
     // 假数据
     const initialState: ChatState = {
@@ -55,9 +61,13 @@ interface HistoryLoadResult {
 }
 
 export async function loadHistory() {
-    const infos: HistoryLoadResult = await rpc.sys.history();
-    console.log("loaded history", infos.messages, infos.total)
-    chatStore.setMessages(infos.messages, infos.total)
+    const infos: HistoryLoadResult = await rpc.task.history();
+    if (infos) {
+        console.log("loaded history", infos.messages, infos.total)
+        chatStore.setMessages(infos.messages, infos.total)
+    } else {
+        chatStore.setMessages([])
+    }
 }
 
 export const chatStore = createChatStore();
