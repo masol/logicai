@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { scale, fly } from "svelte/transition";
+  import { scale, fly, fade } from "svelte/transition";
   import { quintOut, cubicOut } from "svelte/easing";
   import dayjs from "$lib/utils/dayjs";
   import { currentTaskStore } from "$lib/stores/shared.svelte";
@@ -27,28 +27,53 @@
   let loadingTaskId = $state<string | null>(null);
   let currentPage = $state(1);
   let tasksLoadError = $state<string | null>(null);
+  let contentState = $state<"loading" | "error" | "empty" | "single" | "list">(
+    "loading",
+  );
 
   const ITEMS_PER_PAGE = 9;
+  const MIN_LOADING_TIME = 300;
+
   const totalPages = $derived(() => Math.ceil(tasks.length / ITEMS_PER_PAGE));
 
   $effect(() => {
     if (open) {
       currentPage = 1;
+      contentState = "loading";
       loadTasks();
     }
   });
 
   async function loadTasks() {
+    const startTime = Date.now();
     isLoadingTasks = true;
     tasksLoadError = null;
 
     try {
       const result = await rpc.task.get();
       tasks = result || [];
+
+      // 确保最小加载时间
+      const elapsed = Date.now() - startTime;
+      const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
+
+      if (remainingTime > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remainingTime));
+      }
+
+      // 确定内容状态
+      if (tasks.length === 0) {
+        contentState = "empty";
+      } else if (tasks.length === 1) {
+        contentState = "single";
+      } else {
+        contentState = "list";
+      }
     } catch (error) {
       console.error("加载任务失败:", error);
       tasksLoadError = "加载任务失败，请稍后重试";
       tasks = [];
+      contentState = "error";
     } finally {
       isLoadingTasks = false;
     }
@@ -194,11 +219,13 @@
     ></div>
 
     <div
-      class="relative mx-auto my-8 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-500 ease-in-out min-h-fit max-h-[calc(100vh-4rem)]"
+      class="relative mx-auto my-8 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 min-h-fit max-h-[calc(100vh-4rem)] flex flex-col"
       transition:scale={{ duration: 300, easing: quintOut }}
     >
       <!-- 头部 -->
-      <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div
+        class="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+      >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div
@@ -215,7 +242,7 @@
               </p>
             </div>
           </div>
-          {#if !isLoadingTasks && totalPages() > 1}
+          {#if contentState === "list"}
             <div class="text-sm text-gray-500 dark:text-gray-400">
               共 {tasks.length} 个任务
             </div>
@@ -224,11 +251,10 @@
       </div>
 
       <!-- 内容区域 -->
-      <div class="p-6">
-        {#if isLoadingTasks}
+      <div class="flex-1 overflow-hidden">
+        {#if contentState === "loading"}
           <div
-            class="flex flex-col items-center justify-center py-12 text-center"
-            transition:fly={{ y: 20, duration: 300, delay: 150 }}
+            class="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-80"
           >
             <div class="relative mb-4">
               <div
@@ -249,10 +275,10 @@
               正在获取您的任务列表，请稍候...
             </p>
           </div>
-        {:else if tasksLoadError}
+        {:else if contentState === "error"}
           <div
-            class="flex flex-col items-center justify-center py-12 text-center"
-            transition:fly={{ y: 20, duration: 300, delay: 150 }}
+            class="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-80"
+            transition:fade={{ duration: 400 }}
           >
             <div
               class="p-3 bg-red-100 dark:bg-red-900 dark:bg-opacity-20 rounded-full mb-4"
@@ -269,16 +295,19 @@
             </p>
             <button
               class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium transition-all duration-200 hover:bg-opacity-90 hover:scale-105 hover:shadow-lg"
-              onclick={loadTasks}
+              onclick={() => {
+                contentState = "loading";
+                loadTasks();
+              }}
             >
               <LoadingIcon class="w-4 h-4" />
               重新加载
             </button>
           </div>
-        {:else if tasks.length === 0}
+        {:else if contentState === "empty"}
           <div
-            class="flex flex-col items-center justify-center py-12 text-center"
-            transition:fly={{ y: 20, duration: 300, delay: 150 }}
+            class="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-80"
+            transition:fade={{ duration: 400 }}
           >
             <div class="p-3 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
               <AddIcon class="w-6 h-6 text-gray-400 dark:text-gray-500" />
@@ -302,10 +331,10 @@
               新建任务
             </button>
           </div>
-        {:else if tasks.length === 1}
+        {:else if contentState === "single"}
           <div
-            class="flex flex-col items-center justify-center py-12 text-center"
-            transition:fly={{ y: 20, duration: 300, delay: 150 }}
+            class="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-80"
+            transition:fade={{ duration: 400 }}
           >
             <div
               class="p-3 bg-blue-100 dark:bg-blue-900 dark:bg-opacity-20 rounded-full mb-4"
@@ -331,147 +360,153 @@
               新建任务
             </button>
           </div>
-        {:else}
-          <div class="space-y-3">
-            {#each paginatedTasks() as task, index (task.id)}
-              <div
-                class={getTaskCardClass(task.id)}
-                transition:fly={{
-                  x: -20,
-                  duration: 300,
-                  delay: index * 50,
-                  easing: cubicOut,
-                }}
-              >
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-2">
-                      {#if task.id === currentTaskStore.value?.id}
-                        <div
-                          class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"
-                        ></div>
-                        <span
-                          class="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide"
-                          >当前任务</span
-                        >
-                      {/if}
-                    </div>
-                    <h4 class={getTitleClass(task.id)}>
-                      {task.name}
-                    </h4>
-                    <div
-                      class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
-                    >
-                      <ClockIcon class="w-4 h-4" />
-                      <span>{dayjs(task.time).fromNow()}</span>
-                    </div>
-                  </div>
-
-                  {#if task.id !== currentTaskStore.value?.id}
-                    <button
-                      class={getButtonClass(task.id)}
-                      onclick={() => handleSwitch(task)}
-                      onkeydown={(e) => handleKeydown(e, task)}
-                      disabled={loadingTaskId !== null || isLoadingTasks}
-                      aria-label="切换到 {task.name}"
-                    >
-                      {#if loadingTaskId === task.id}
-                        <LoadingIcon class="w-4 h-4 animate-spin" />
-                        <span>切换中...</span>
-                      {:else}
-                        <SwitchIcon class="w-4 h-4" />
-                        <span>切换</span>
-                      {/if}
-                    </button>
-                  {/if}
-                </div>
-              </div>
-            {/each}
-          </div>
-
-          {#if totalPages() > 1}
-            <div
-              class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700"
-            >
-              <div class="text-sm text-gray-500 dark:text-gray-400">
-                第 {currentPage} 页，共 {totalPages()} 页
-              </div>
-
-              <div class="flex items-center gap-1">
-                <button
-                  class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                  onclick={goToFirstPage}
-                  disabled={currentPage === 1 ||
-                    loadingTaskId !== null ||
-                    isLoadingTasks}
-                  aria-label="首页"
+        {:else if contentState === "list"}
+          <div
+            class="p-6 h-full overflow-y-auto"
+            transition:fade={{ duration: 400 }}
+          >
+            <div class="space-y-3">
+              {#each paginatedTasks() as task, index (task.id)}
+                <div
+                  class={getTaskCardClass(task.id)}
+                  transition:fly={{
+                    x: -20,
+                    duration: 300,
+                    delay: index * 50,
+                    easing: cubicOut,
+                  }}
                 >
-                  <FirstPageIcon class="w-4 h-4" />
-                </button>
-
-                <button
-                  class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                  onclick={prevPage}
-                  disabled={currentPage === 1 ||
-                    loadingTaskId !== null ||
-                    isLoadingTasks}
-                  aria-label="上一页"
-                >
-                  <ChevronLeft class="w-4 h-4" />
-                </button>
-
-                <div class="flex items-center gap-1 mx-2">
-                  {#each visiblePages() as pageItem}
-                    {#if pageItem === "ellipsis"}
-                      <span class="px-2 py-1 text-gray-400 dark:text-gray-500"
-                        >...</span
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-2">
+                        {#if task.id === currentTaskStore.value?.id}
+                          <div
+                            class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"
+                          ></div>
+                          <span
+                            class="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide"
+                            >当前任务</span
+                          >
+                        {/if}
+                      </div>
+                      <h4 class={getTitleClass(task.id)}>
+                        {task.name}
+                      </h4>
+                      <div
+                        class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
                       >
-                    {:else}
+                        <ClockIcon class="w-4 h-4" />
+                        <span>{dayjs(task.time).fromNow()}</span>
+                      </div>
+                    </div>
+
+                    {#if task.id !== currentTaskStore.value?.id}
                       <button
-                        class={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
-                          pageItem === currentPage
-                            ? "bg-primary text-white shadow-sm"
-                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        } ${loadingTaskId !== null || isLoadingTasks ? "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100" : ""}`}
-                        onclick={() => goToPage(pageItem)}
+                        class={getButtonClass(task.id)}
+                        onclick={() => handleSwitch(task)}
+                        onkeydown={(e) => handleKeydown(e, task)}
                         disabled={loadingTaskId !== null || isLoadingTasks}
+                        aria-label="切换到 {task.name}"
                       >
-                        {pageItem}
+                        {#if loadingTaskId === task.id}
+                          <LoadingIcon class="w-4 h-4 animate-spin" />
+                          <span>切换中...</span>
+                        {:else}
+                          <SwitchIcon class="w-4 h-4" />
+                          <span>切换</span>
+                        {/if}
                       </button>
                     {/if}
-                  {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+
+            {#if totalPages() > 1}
+              <div
+                class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700"
+                transition:fade={{ duration: 300, delay: 300 }}
+              >
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                  第 {currentPage} 页，共 {totalPages()} 页
                 </div>
 
-                <button
-                  class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                  onclick={nextPage}
-                  disabled={currentPage === totalPages() ||
-                    loadingTaskId !== null ||
-                    isLoadingTasks}
-                  aria-label="下一页"
-                >
-                  <ChevronRight class="w-4 h-4" />
-                </button>
+                <div class="flex items-center gap-1">
+                  <button
+                    class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    onclick={goToFirstPage}
+                    disabled={currentPage === 1 ||
+                      loadingTaskId !== null ||
+                      isLoadingTasks}
+                    aria-label="首页"
+                  >
+                    <FirstPageIcon class="w-4 h-4" />
+                  </button>
 
-                <button
-                  class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                  onclick={goToLastPage}
-                  disabled={currentPage === totalPages() ||
-                    loadingTaskId !== null ||
-                    isLoadingTasks}
-                  aria-label="末页"
-                >
-                  <LastPageIcon class="w-4 h-4" />
-                </button>
+                  <button
+                    class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    onclick={prevPage}
+                    disabled={currentPage === 1 ||
+                      loadingTaskId !== null ||
+                      isLoadingTasks}
+                    aria-label="上一页"
+                  >
+                    <ChevronLeft class="w-4 h-4" />
+                  </button>
+
+                  <div class="flex items-center gap-1 mx-2">
+                    {#each visiblePages() as pageItem}
+                      {#if pageItem === "ellipsis"}
+                        <span class="px-2 py-1 text-gray-400 dark:text-gray-500"
+                          >...</span
+                        >
+                      {:else}
+                        <button
+                          class={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
+                            pageItem === currentPage
+                              ? "bg-primary text-white shadow-sm"
+                              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          } ${loadingTaskId !== null || isLoadingTasks ? "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100" : ""}`}
+                          onclick={() => goToPage(pageItem)}
+                          disabled={loadingTaskId !== null || isLoadingTasks}
+                        >
+                          {pageItem}
+                        </button>
+                      {/if}
+                    {/each}
+                  </div>
+
+                  <button
+                    class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    onclick={nextPage}
+                    disabled={currentPage === totalPages() ||
+                      loadingTaskId !== null ||
+                      isLoadingTasks}
+                    aria-label="下一页"
+                  >
+                    <ChevronRight class="w-4 h-4" />
+                  </button>
+
+                  <button
+                    class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    onclick={goToLastPage}
+                    disabled={currentPage === totalPages() ||
+                      loadingTaskId !== null ||
+                      isLoadingTasks}
+                    aria-label="末页"
+                  >
+                    <LastPageIcon class="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          {/if}
+            {/if}
+          </div>
         {/if}
       </div>
 
       <!-- 底部 -->
       <div
-        class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3"
+        class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 flex-shrink-0"
       >
         <button
           class={`px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-105 ${
