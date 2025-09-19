@@ -64,6 +64,7 @@ export const rpc = {
     sys: {
         get: async (...args: any[]) => electronInvoke("sys.get", ...args),
         set: async (...args: any[]) => electronInvoke("sys.set", ...args),
+        passive: async (...args: any[]) => electronInvoke("sys.passive", ...args),
     },
     task: {
         history: async (...args: any[]) => electronInvoke("task.history", ...args),

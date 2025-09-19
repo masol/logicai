@@ -30,6 +30,8 @@ export interface IAppContext {
      */
     readonly inited: boolean;
 
+    passive: boolean; // 当前AI是否处于被动工作模式(true:自行根据上下文确定一切待决信息,false: 询问用户缺失信息。)
+
     /**
      * 发送事件到渲染进程
      * @param eventName 事件名称

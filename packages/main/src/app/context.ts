@@ -3,6 +3,7 @@ import path from "node:path";
 import { History } from "./history.js";
 import { IAppContext } from "./context.type.js";
 import { TaskMan } from "./taskman.js";
+import { getSetting } from "../api/sys.js";
 
 export class AppContext implements IAppContext {
   #initstate = {
@@ -16,6 +17,8 @@ export class AppContext implements IAppContext {
   readonly history: History;
   readonly task: TaskMan;
 
+  passive: boolean = true;
+
   // key是id,保存为loki/${id}.json．
   readonly #subdb: Map<string, LokiDatabase> = new Map();
   constructor(app: Electron.App, win: Electron.BrowserWindow) {
@@ -28,6 +31,7 @@ export class AppContext implements IAppContext {
     this.db = new LokiDatabase(
       { dbPath },
       () => {
+        this.passive = !!getSetting(this, "passive");
         this.task.loadCurrent();
         this.onInitStep("db");
       }

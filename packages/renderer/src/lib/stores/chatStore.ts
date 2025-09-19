@@ -63,7 +63,7 @@ interface HistoryLoadResult {
 export async function loadHistory() {
     const infos: HistoryLoadResult = await rpc.task.history();
     if (infos) {
-        console.log("loaded history", infos.messages, infos.total)
+        // console.log("loaded history", infos.messages, infos.total)
         chatStore.setMessages(infos.messages, infos.total)
     } else {
         chatStore.setMessages([])

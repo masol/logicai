@@ -46,7 +46,16 @@ async function get(name: string) {
     const ctx: IAppContext = this;
     return getSetting(ctx, name)
 }
+
+async function passive(value: boolean) {
+    //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
+    const ctx: IAppContext = this;
+    ctx.passive = value;
+    setSetting(ctx,"passive",value);
+}
+
 export default {
     get,
-    set
+    set,
+    passive
 };

@@ -6,6 +6,7 @@
   import IconKeyboard from "~icons/mdi/keyboard";
   import { currentTaskStore } from "$lib/stores/shared.svelte";
   import TaskSwitcher from "./TaskSwitcher.svelte";
+  import Passive from "./Passive.svelte";
   import NewTask from "./NewTask.svelte";
   import IconAdd from "~icons/mdi/plus";
   import { pipe, isEmpty, take } from "remeda";
@@ -487,6 +488,7 @@
             <span>正在录音...</span>
           </div>
         {/if}
+        <Passive></Passive>
       </div>
     </div>
   </div>
