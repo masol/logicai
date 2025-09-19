@@ -8,10 +8,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-0.0.1-green.svg)](https://github.com/masol/logicai/releases)
 
-[English](README.cn.md.md) |  **中文**
+[English](../README.md) |  **中文**
 
 ---
-
 # 项目概述
 
 本项目旨在构建一个基于逻辑推理的自动任务分解系统，通过将大语言模型（LLM）的调用视为幂等函数，实现复杂任务的分解与编排。系统的核心在于将LLM的直觉式推理能力与形式逻辑体系相结合，通过构建和维护一个本体空间，实现任务分解和编排的持续迭代。
