@@ -37,7 +37,7 @@ export class TaskMan implements ITaskMan {
 
     loadCurrent(): void {
         const currentTask = getSetting(this.app, settingKey);
-        console.log("current task =", currentTask)
+        // console.log("current task =", currentTask)
         if (currentTask) {
             this.current = currentTask;
         }

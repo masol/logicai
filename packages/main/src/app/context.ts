@@ -4,6 +4,7 @@ import { History } from "./history.js";
 import { IAppContext } from "./context.type.js";
 import { TaskMan } from "./taskman.js";
 import { getSetting } from "../api/sys.js";
+import { LLMManager } from './llms/manager.js'
 
 export class AppContext implements IAppContext {
   #initstate = {
@@ -16,6 +17,7 @@ export class AppContext implements IAppContext {
   readonly db: LokiDatabase;
   readonly history: History;
   readonly task: TaskMan;
+  readonly llms: LLMManager;
 
   passive: boolean = true;
 
@@ -28,11 +30,22 @@ export class AppContext implements IAppContext {
     const dbPath = path.join(userData, "store", "data.json");
     // console.log("dbPath=", dbPath);
     const that = this;
+    this.llms = new LLMManager();
     this.db = new LokiDatabase(
       { dbPath },
       () => {
         this.passive = !!getSetting(this, "passive");
         this.task.loadCurrent();
+
+        //加载和初始化llm集合
+        const allModels = getSetting(this, "models") ?? { llm: [] };
+
+        // console.log("models=", allModels.llm)
+        this.llms.init(allModels.llm);
+
+        console.log("llm status=")
+        console.dir(this.llms.getInstancesStatus());
+
         this.onInitStep("db");
       }
     );

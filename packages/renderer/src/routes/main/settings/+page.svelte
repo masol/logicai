@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { slide, fly } from "svelte/transition";
+  import { slide, fly, fade } from "svelte/transition";
   import { spring, tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import IconSettings from "~icons/mdi/cog";
@@ -23,6 +23,7 @@
 
   // 加载状态
   let isLoading = $state(true);
+  let isInitialLoad = $state(true);
 
   // 当前选中的设置项
   let selectedSection = $state("general");
@@ -110,6 +111,10 @@
     expandedCategories = new Set(expandedCategories);
 
     isLoading = false;
+    // 稍微延迟设置初始加载完成，确保界面稳定
+    setTimeout(() => {
+      isInitialLoad = false;
+    }, 100);
   }
 
   async function saveLanguage(language) {
@@ -150,8 +155,11 @@
   function selectSection(section, subSection = "") {
     selectedSection = section;
     selectedSubSection = subSection;
-    contentOpacity.set(0);
-    setTimeout(() => contentOpacity.set(1), 150);
+    // 只有在非初始加载时才使用淡出淡入效果
+    if (!isInitialLoad) {
+      contentOpacity.set(0);
+      setTimeout(() => contentOpacity.set(1), 150);
+    }
   }
 
   function toggleCategory(category) {
@@ -178,7 +186,7 @@
     const preset = presetModels[newModel.name];
     if (!preset) return;
 
-    const id = Date.now();
+    const id = crypto.randomUUID();
     const category = preset.category;
 
     // 初始化分类数组
@@ -337,10 +345,24 @@
 
   // 获取当前选中的模型信息
   function getSelectedModel() {
+    // console.log("selectedSubSection=", selectedSubSection);
     if (!selectedSubSection || !selectedSubSection.startsWith("model-"))
       return null;
-    const [, categoryKey, modelId] = selectedSubSection.split("-");
-    return models[categoryKey]?.find((m) => m.id === parseInt(modelId));
+
+    // 移除 "model-" 前缀
+    const remainder = selectedSubSection.slice(6); // "model-".length = 6
+
+    // 找到第一个 "-" 的位置来分离类别和UUID
+    const firstDashIndex = remainder.indexOf("-");
+    if (firstDashIndex === -1) return null;
+
+    const categoryKey = remainder.slice(0, firstDashIndex);
+    const modelId = remainder.slice(firstDashIndex + 1);
+
+    // console.log("categoryKey=", categoryKey, "modelId=", modelId);
+    // console.log("models=", $state.snapshot(models));
+
+    return models[categoryKey]?.find((m) => m.id === modelId);
   }
 
   // 获取当前选中模型的分类
@@ -369,6 +391,7 @@
   <!-- 加载状态 -->
   <div
     class="flex h-screen bg-gray-50 dark:bg-gray-900 items-center justify-center"
+    transition:fade={{ duration: 300 }}
   >
     <div class="text-center">
       <IconLoading class="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
@@ -376,7 +399,10 @@
     </div>
   </div>
 {:else}
-  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
+  <div
+    class="flex h-screen bg-gray-50 dark:bg-gray-900"
+    transition:fade={{ duration: 400 }}
+  >
     <!-- 左侧导航 -->
     <div
       class="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto"
@@ -633,7 +659,7 @@
     <div class="flex-1 overflow-y-auto">
       <div class="p-8" style="opacity: {$contentOpacity}">
         {#if selectedSection === "general"}
-          <div in:fly={{ x: 20, duration: 300 }}>
+          <div>
             <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">
               一般设置
             </h2>
@@ -823,261 +849,263 @@
               </div>
             </div>
           </div>
-        {:else if selectedSection === "model"}
-          <div in:fly={{ x: 20, duration: 300 }}>
+        {:else if selectedSection === "model" && selectedSubSection}
+          <div>
             <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">
               模型设置
             </h2>
 
-            {#if selectedSubSection}
-              {#if getSelectedModel()}
-                {#each [getSelectedModel()] as model}
-                  {#each [getSelectedCategory()] as categoryKey}
-                    <div
-                      class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+            {#if getSelectedModel()}
+              {@const model = getSelectedModel()}
+              {@const categoryKey = getSelectedCategory()}
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+              >
+                <div class="flex items-center justify-between mb-6">
+                  <div>
+                    <h3
+                      class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2"
                     >
-                      <div class="flex items-center justify-between mb-6">
-                        <div>
-                          <h3
-                            class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2"
-                          >
-                            {model.name}
-                            {#if model.enabled}
-                              <IconPower class="w-5 h-5 text-green-500" />
-                            {:else}
-                              <IconPowerOff class="w-5 h-5 text-gray-400" />
-                              <span class="text-sm text-gray-500">已禁用</span>
-                            {/if}
-                            {#if hasNoEmbedding(model.name)}
-                              <span
-                                class="text-sm bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-1 rounded"
-                              >
-                                无嵌入支持
-                              </span>
-                            {/if}
-                          </h3>
-                          <p class="text-gray-600 dark:text-gray-400">
-                            {model.provider}
-                          </p>
-                        </div>
-                        <div class="flex gap-3">
-                          <button
-                            onclick={() =>
-                              toggleModelEnabled(categoryKey, model.id)}
-                            class="px-4 py-2 {model.enabled
-                              ? 'bg-red-500 hover:bg-red-600'
-                              : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
-                          >
-                            {#if model.enabled}
-                              <IconPowerOff class="w-4 h-4" />
-                              禁用模型
-                            {:else}
-                              <IconPower class="w-4 h-4" />
-                              启用模型
-                            {/if}
-                          </button>
-                          <button
-                            onclick={() => deleteModel(categoryKey, model.id)}
-                            class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
-                          >
-                            删除模型
-                          </button>
-                        </div>
-                      </div>
+                      {model.name}
+                      {#if model.enabled}
+                        <IconPower class="w-5 h-5 text-green-500" />
+                      {:else}
+                        <IconPowerOff class="w-5 h-5 text-gray-400" />
+                        <span class="text-sm text-gray-500">已禁用</span>
+                      {/if}
+                      {#if hasNoEmbedding(model.name)}
+                        <span
+                          class="text-sm bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-1 rounded"
+                        >
+                          无嵌入支持
+                        </span>
+                      {/if}
+                    </h3>
+                    <p class="text-gray-600 dark:text-gray-400">
+                      {model.provider}
+                    </p>
+                  </div>
+                  <div class="flex gap-3">
+                    <button
+                      onclick={() => toggleModelEnabled(categoryKey, model.id)}
+                      class="px-4 py-2 {model.enabled
+                        ? 'bg-red-500 hover:bg-red-600'
+                        : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
+                    >
+                      {#if model.enabled}
+                        <IconPowerOff class="w-4 h-4" />
+                        禁用模型
+                      {:else}
+                        <IconPower class="w-4 h-4" />
+                        启用模型
+                      {/if}
+                    </button>
+                    <button
+                      onclick={() => deleteModel(categoryKey, model.id)}
+                      class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
+                    >
+                      删除模型
+                    </button>
+                  </div>
+                </div>
 
-                      <div class="grid grid-cols-1 gap-6">
-                        <!-- API Key -->
-                        <div>
-                          <label
-                            for={`api-key-${model.id}`}
-                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                          >
-                            API Key
-                          </label>
-                          <div class="relative">
-                            <input
-                              id={`api-key-${model.id}`}
-                              type={newModel.showApiKey ? "text" : "password"}
-                              value={model.apiKey}
-                              readonly
-                              class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
-                            />
-                            <button
-                              onclick={toggleApiKeyVisibility}
-                              class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            >
-                              {#if newModel.showApiKey}
-                                <IconEyeOff class="w-4 h-4" />
-                              {:else}
-                                <IconEye class="w-4 h-4" />
-                              {/if}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                <div class="grid grid-cols-1 gap-6">
+                  <!-- API Key -->
+                  <div>
+                    <label
+                      for={`api-key-${model.id}`}
+                      class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      API Key
+                    </label>
+                    <div class="relative">
+                      <input
+                        id={`api-key-${model.id}`}
+                        type={newModel.showApiKey ? "text" : "password"}
+                        value={model.apiKey}
+                        readonly
+                        class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
+                      />
+                      <button
+                        onclick={toggleApiKeyVisibility}
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      >
+                        {#if newModel.showApiKey}
+                          <IconEyeOff class="w-4 h-4" />
+                        {:else}
+                          <IconEye class="w-4 h-4" />
+                        {/if}
+                      </button>
                     </div>
-                  {/each}
-                {/each}
-              {/if}
-            {:else}
-              <div class="text-center py-12">
-                <IconModel class="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p class="text-gray-500 dark:text-gray-400">
-                  请选择一个模型进行配置
-                </p>
+                  </div>
+                </div>
               </div>
             {/if}
           </div>
-        {:else if selectedSection === "mcp"}
-          <div in:fly={{ x: 20, duration: 300 }}>
+        {:else if selectedSection === "model"}
+          <div>
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+              模型设置
+            </h2>
+            <div class="text-center py-12">
+              <IconModel class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p class="text-gray-500 dark:text-gray-400">
+                请选择一个模型进行配置
+              </p>
+            </div>
+          </div>
+        {:else if selectedSection === "mcp" && selectedSubSection}
+          <div>
             <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">
               MCP设置
             </h2>
 
-            {#if selectedSubSection}
-              {#if getSelectedMcp()}
-                {#each [getSelectedMcp()] as mcp}
-                  <div
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
-                  >
-                    <div class="flex items-center justify-between mb-6">
-                      <div>
-                        <h3
-                          class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2"
-                        >
-                          {mcp.name}
-                          {#if mcp.type === "remote"}
-                            <IconCloud class="w-5 h-5 text-blue-500" />
-                          {:else}
-                            <IconDesktop class="w-5 h-5 text-green-500" />
-                          {/if}
-                          {#if mcp.enabled}
-                            <IconPower class="w-5 h-5 text-green-500" />
-                          {:else}
-                            <IconPowerOff class="w-5 h-5 text-gray-400" />
-                            <span class="text-sm text-gray-500">已禁用</span>
-                          {/if}
-                        </h3>
-                        <p class="text-gray-600 dark:text-gray-400">
-                          {mcp.description}
-                        </p>
-                      </div>
-                      <div class="flex gap-3">
-                        <button
-                          onclick={() => toggleMcpEnabled(mcp.id)}
-                          class="px-4 py-2 {mcp.enabled
-                            ? 'bg-red-500 hover:bg-red-600'
-                            : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
-                        >
-                          {#if mcp.enabled}
-                            <IconPowerOff class="w-4 h-4" />
-                            禁用服务
-                          {:else}
-                            <IconPower class="w-4 h-4" />
-                            启用服务
-                          {/if}
-                        </button>
-                        <button
-                          onclick={() => deleteMcp(mcp.id)}
-                          class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
-                        >
-                          删除服务
-                        </button>
-                      </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-6">
-                      <div class="grid grid-cols-2 gap-4">
-                        <!-- 类型 -->
-                        <div>
-                          <label
-                            for=""
-                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                          >
-                            类型
-                          </label>
-                          <div
-                            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white flex items-center gap-2"
-                          >
-                            {#if mcp.type === "remote"}
-                              <IconCloud class="w-4 h-4 text-blue-500" />
-                              远端
-                            {:else}
-                              <IconDesktop class="w-4 h-4 text-green-500" />
-                              本地
-                            {/if}
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- 根据类型显示不同配置 -->
-                      {#if mcp.type === "local"}
-                        <div>
-                          <label
-                            for="mcpCommand"
-                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                          >
-                            命令
-                          </label>
-                          <input
-                            id="mcpCommand"
-                            type="text"
-                            value={mcp.command}
-                            readonly
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
+            {#if getSelectedMcp()}
+              {@const mcp = getSelectedMcp()}
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+              >
+                <div class="flex items-center justify-between mb-6">
+                  <div>
+                    <h3
+                      class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2"
+                    >
+                      {mcp.name}
+                      {#if mcp.type === "remote"}
+                        <IconCloud class="w-5 h-5 text-blue-500" />
                       {:else}
-                        <div class="grid grid-cols-2 gap-4">
-                          <div>
-                            <label
-                              for="mcp_url"
-                              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                            >
-                              URL
-                            </label>
-                            <input
-                              id="mcp_url"
-                              type="text"
-                              value={mcp.url}
-                              readonly
-                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
-                            />
-                          </div>
-                          <div>
-                            <label
-                              for="mcp_type_display"
-                              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                            >
-                              类型
-                            </label>
-                            <div
-                              id="mcp_type_display"
-                              class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white flex items-center gap-2"
-                            >
-                              {#if mcp.type === "remote"}
-                                <IconCloud class="w-4 h-4 text-blue-500" />
-                                远端
-                              {:else}
-                                <IconDesktop class="w-4 h-4 text-green-500" />
-                                本地
-                              {/if}
-                            </div>
-                          </div>
-                        </div>
+                        <IconDesktop class="w-5 h-5 text-green-500" />
                       {/if}
+                      {#if mcp.enabled}
+                        <IconPower class="w-5 h-5 text-green-500" />
+                      {:else}
+                        <IconPowerOff class="w-5 h-5 text-gray-400" />
+                        <span class="text-sm text-gray-500">已禁用</span>
+                      {/if}
+                    </h3>
+                    <p class="text-gray-600 dark:text-gray-400">
+                      {mcp.description}
+                    </p>
+                  </div>
+                  <div class="flex gap-3">
+                    <button
+                      onclick={() => toggleMcpEnabled(mcp.id)}
+                      class="px-4 py-2 {mcp.enabled
+                        ? 'bg-red-500 hover:bg-red-600'
+                        : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
+                    >
+                      {#if mcp.enabled}
+                        <IconPowerOff class="w-4 h-4" />
+                        禁用服务
+                      {:else}
+                        <IconPower class="w-4 h-4" />
+                        启用服务
+                      {/if}
+                    </button>
+                    <button
+                      onclick={() => deleteMcp(mcp.id)}
+                      class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
+                    >
+                      删除服务
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6">
+                  <div class="grid grid-cols-2 gap-4">
+                    <!-- 类型 -->
+                    <div>
+                      <label
+                        for=""
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        类型
+                      </label>
+                      <div
+                        class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white flex items-center gap-2"
+                      >
+                        {#if mcp.type === "remote"}
+                          <IconCloud class="w-4 h-4 text-blue-500" />
+                          远端
+                        {:else}
+                          <IconDesktop class="w-4 h-4 text-green-500" />
+                          本地
+                        {/if}
+                      </div>
                     </div>
                   </div>
-                {/each}
-              {/if}
-            {:else}
-              <div class="text-center py-12">
-                <IconMcp class="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p class="text-gray-500 dark:text-gray-400">
-                  请选择一个MCP服务进行配置
-                </p>
+
+                  <!-- 根据类型显示不同配置 -->
+                  {#if mcp.type === "local"}
+                    <div>
+                      <label
+                        for="mcpCommand"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        命令
+                      </label>
+                      <input
+                        id="mcpCommand"
+                        type="text"
+                        value={mcp.command}
+                        readonly
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                  {:else}
+                    <div class="grid grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          for="mcp_url"
+                          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                        >
+                          URL
+                        </label>
+                        <input
+                          id="mcp_url"
+                          type="text"
+                          value={mcp.url}
+                          readonly
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          for="mcp_type_display"
+                          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                        >
+                          类型
+                        </label>
+                        <div
+                          id="mcp_type_display"
+                          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white flex items-center gap-2"
+                        >
+                          {#if mcp.type === "remote"}
+                            <IconCloud class="w-4 h-4 text-blue-500" />
+                            远端
+                          {:else}
+                            <IconDesktop class="w-4 h-4 text-green-500" />
+                            本地
+                          {/if}
+                        </div>
+                      </div>
+                    </div>
+                  {/if}
+                </div>
               </div>
             {/if}
+          </div>
+        {:else if selectedSection === "mcp"}
+          <div>
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+              MCP设置
+            </h2>
+            <div class="text-center py-12">
+              <IconMcp class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p class="text-gray-500 dark:text-gray-400">
+                请选择一个MCP服务进行配置
+              </p>
+            </div>
           </div>
         {/if}
       </div>
@@ -1088,7 +1116,7 @@
   {#if showAddModal}
     <div
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      transition:fly={{ y: 20, duration: 300 }}
+      transition:fade={{ duration: 300 }}
       onclick={(e) => e.target === e.currentTarget && (showAddModal = false)}
       onkeydown={(e) => e.key === "Escape" && (showAddModal = false)}
       role="dialog"
@@ -1118,7 +1146,9 @@
             >
               <option value="">请选择模型</option>
               {#each Object.keys(presetModels) as modelName}
-                <option value={modelName}>{modelName}</option>
+                <option value={modelName}
+                  >{presetModels[modelName].provider}::{modelName}</option
+                >
               {/each}
             </select>
           </div>
@@ -1202,7 +1232,7 @@
   {#if showAddMcpModal}
     <div
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      transition:fly={{ y: 20, duration: 300 }}
+      transition:fade={{ duration: 300 }}
       onclick={(e) => e.target === e.currentTarget && (showAddMcpModal = false)}
       onkeydown={(e) => e.key === "Escape" && (showAddMcpModal = false)}
       role="dialog"

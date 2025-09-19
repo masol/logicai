@@ -1,6 +1,7 @@
 import { type LokiDatabase } from "./loki.js";
 import { type History } from "./history.js";
 import { type ITaskMan } from "./taskman.type.js";
+import type { ILLMManager } from './llms/index.type.js'
 
 export interface IAppContext {
     /**
@@ -17,6 +18,8 @@ export interface IAppContext {
      * 主数据库实例（只读）
      */
     readonly db: LokiDatabase;
+
+    readonly llms: ILLMManager;
 
     /**
      * 历史记录实例（只读）

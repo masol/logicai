@@ -29,6 +29,13 @@ async function set(name: string, value: any) {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
     const ctx: IAppContext = this;
     setSetting(ctx, name, value);
+    if (name === "models") { // 如果设置模型，重新初始化！
+        const models = value?.llm || [];
+        ctx.llms.removeAllLLMs();
+        ctx.llms.init(models);
+        console.log("llm status=")
+        console.dir(ctx.llms.getInstancesStatus());
+    }
 }
 
 export function getSetting(ctx: IAppContext, name: string): any {
@@ -51,7 +58,7 @@ async function passive(value: boolean) {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
     const ctx: IAppContext = this;
     ctx.passive = value;
-    setSetting(ctx,"passive",value);
+    setSetting(ctx, "passive", value);
 }
 
 export default {

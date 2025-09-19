@@ -22,41 +22,33 @@ export const modelCategories = {
 
 // 预设模型配置
 export const presetModels = {
-    "deepseek-chat": { provider: "DeepSeek", category: "llm", needsApiKey: true },
-    "groq:groq/compound": { provider: "Groq", category: "llm", needsApiKey: true },
-    "groq:llama-3.1-8b-instant": { provider: "Groq", category: "llm", needsApiKey: true },
-    "groq:openai/gpt-oss-120b": { provider: "Groq", category: "llm", needsApiKey: true }
-    // "GPT-4o": { provider: "OpenAI", category: "llm", needsApiKey: true },
-    // "GPT-4o mini": { provider: "OpenAI", category: "llm", needsApiKey: true },
-    // "Claude-3.5 Sonnet": {
-    //     provider: "Anthropic",
-    //     category: "llm",
-    //     needsApiKey: true,
-    // },
-    // "Claude-3.5 Haiku": {
-    //     provider: "Anthropic",
-    //     category: "llm",
-    //     needsApiKey: true,
-    // },
-    // "Gemini Pro": { provider: "Google", category: "llm", needsApiKey: true },
-    // "DALL-E 3": { provider: "OpenAI", category: "text2img", needsApiKey: true },
-    // Midjourney: {
-    //     provider: "Midjourney",
-    //     category: "text2img",
-    //     needsApiKey: true,
-    // },
-    // "Stable Diffusion": {
-    //     provider: "Stability AI",
-    //     category: "text2img",
-    //     needsApiKey: true,
-    // },
-    // "Stable Video": {
-    //     provider: "Stability AI",
-    //     category: "text2video",
-    //     needsApiKey: true,
-    // },
+    "DeepSeek::deepseek-chat": { provider: "DeepSeek", category: "llm", needsApiKey: true },
+    "Groq::llama-3.1-8b-instant": { provider: "Groq", category: "llm", needsApiKey: true },
+    "Groq::openai/gpt-oss-120b": { provider: "Groq", category: "llm", needsApiKey: true },
+    "OpenRouter::groq/compound": { provider: "Groq", category: "llm", needsApiKey: true },
+    "OpenRouter::nvidia/nemotron-nano-9b-v2:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::deepseek/deepseek-chat-v3.1:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::openai/gpt-oss-120b:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::openai/gpt-oss-20b:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::z-ai/glm-4.5-air:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::qwen/qwen3-coder:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::moonshotai/kimi-k2:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::cognitivecomputations/dolphin-mistral-24b-venice-edition:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::google/gemma-3n-e2b-it:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::tencent/hunyuan-a13b-instruct:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::mistralai/mistral-small-3.2-24b-instruct:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::meta-llama/llama-3.3-8b-instruct:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::qwen/qwen3-4b:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::qwen/qwen3-30b-a3b:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::meta-llama/llama-4-scout:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::meta-llama/llama-4-maverick:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::mistralai/mistral-small-3.1-24b-instruct:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::google/gemma-3-4b-it:free": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::x-ai/grok-code-fast-1": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::anthropic/claude-sonnet-4": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::google/gemini-2.5-flash": { provider: "OpenRouter", category: "llm", needsApiKey: true },
+    "OpenRouter::openai/gpt-4.1-mini": { provider: "OpenRouter", category: "llm", needsApiKey: true }
 };
-
 
 export const languages = [
     { code: "zh-CN", name: "简体中文" },
