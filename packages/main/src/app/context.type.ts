@@ -1,6 +1,6 @@
 import { type LokiDatabase } from "./loki.js";
 import { type History } from "./history.js";
-import { type ITaskMan } from "./taskman.type.js";
+import { type ITaskMan } from "./task/index.type.js";
 import type { ILLMManager } from './llms/index.type.js'
 
 export interface IAppContext {
@@ -42,17 +42,8 @@ export interface IAppContext {
      */
     emit(eventName: string, eventData?: Record<string, any>): void;
 
-    /**
-     * 确保指定ID的子数据库存在并初始化
-     * @param id 数据库ID
-     * @returns Promise，resolve时返回数据库实例
-     */
-    ensureDB(id: string): Promise<LokiDatabase>;
 
-    /**
-     * 关闭指定ID的子数据库
-     * @param id 数据库ID
-     * @returns Promise，resolve时返回操作是否成功
-     */
-    closeDB(id: string): Promise<boolean>;
+    //获取指定任务的目录。id为任务id.
+    taskDir(id: string): string;
+
 }

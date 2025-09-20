@@ -2,7 +2,7 @@ import { LokiDatabase } from "./loki.js";
 import path from "node:path";
 import { History } from "./history.js";
 import { IAppContext } from "./context.type.js";
-import { TaskMan } from "./taskman.js";
+import { TaskMan } from "./task/taskman.js";
 import { getSetting } from "../api/sys.js";
 import { LLMManager } from './llms/manager.js'
 
@@ -22,7 +22,7 @@ export class AppContext implements IAppContext {
   passive: boolean = true;
 
   // key是id,保存为loki/${id}.json．
-  readonly #subdb: Map<string, LokiDatabase> = new Map();
+  // readonly #subdb: Map<string, LokiDatabase> = new Map();
   constructor(app: Electron.App, win: Electron.BrowserWindow) {
     this.app = app;
     this.win = win;
@@ -61,7 +61,7 @@ export class AppContext implements IAppContext {
   }
 
   get inited(): boolean {
-    return this.#initstate.db
+    return this.#initstate.db && this.#initstate.history
   }
 
   private onInitStep(name: "db" | "history") {
@@ -71,18 +71,19 @@ export class AppContext implements IAppContext {
     }
   }
 
-  getFileName(prefix = "result", pathName = ""): string {
+  // // 本体目录．
+  // ontologyPath(): string {
+  //   const userData = this.app.getPath("userData");
+  //   return path.join(userData, 'store', 'ontology');
+  // }
+
+
+  // 返回指定id的任务目录．
+  taskDir(id: string): string {
     const userData = this.app.getPath("userData");
-    const now = new Date();
-    const timestamp = now.toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, -5);
-    return path.join(userData, pathName, `${prefix}-${timestamp}.md`);
+    return path.join(userData, 'tasks', id);
   }
 
-  // 本体目录．
-  ontologyPath(): string {
-    const userData = this.app.getPath("userData");
-    return path.join(userData, 'store', 'ontology');
-  }
 
   // 发送事件到渲染进程
   emit(eventName: string, eventData: Record<string, any> = {}) {
@@ -99,35 +100,5 @@ export class AppContext implements IAppContext {
     }
   }
 
-
-  async ensureDB(id: string): Promise<LokiDatabase> {
-    let db = this.#subdb.get(id)
-    if (db) {
-      return db;
-    }
-    const userData = this.app.getPath("userData");
-    const dbPath = path.join(userData, "store", `${id}.json`);
-    return new Promise((resolve, reject) => {
-      db = new LokiDatabase({ dbPath }, () => {
-        if (db) {
-          this.#subdb.set(id, db);
-          resolve(db);
-          return;
-        }
-
-        reject(false);
-      });
-    });
-  }
-
-  async closeDB(id: string): Promise<boolean> {
-    const db = this.#subdb.get(id);
-    if (!db) {
-      return true;
-    }
-    await db.close();
-    this.#subdb.delete(id);
-    return true;
-  }
 }
 

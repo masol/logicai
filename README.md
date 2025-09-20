@@ -1,6 +1,6 @@
-# LogicAI
+# LogicAI <!-- omit in toc -->
 
-**Evolving LLM from Intuition to Logic - A Logic-Driven Workflow Orchestration System that Automatically Creates Agents for Complex Task Execution**
+**Evolving LLM from Intuition to Logic - A Logic-Driven Workflow Orchestration System that Automatically Creates Agents for Complex Task**
 
 [![Stars](https://img.shields.io/github/stars/masol/logicai?style=social)](https://github.com/masol/logicai/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,7 +9,40 @@
 
 **English** | [中文](doc/README.cn.md)
 
-**Tips: The English version is translated from the Chinese version by LLM.**
+**Tips: The English version is translated from the [Chinese version](doc/README.cn.md) by LLM.**
+
+
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+## Table of Contents <!-- omit in toc -->
+
+- [Project Overview](#project-overview)
+- [Explanation of concepts](#explanation-of-concepts)
+  - [Production Line Design Analogy:](#production-line-design-analogy)
+    - [Design Layer Knowledge (Ontological Space):](#design-layer-knowledge-ontological-space)
+    - [Execution Layer Knowledge (Workflow Usage):](#execution-layer-knowledge-workflow-usage)
+  - [Difference from Chain of Thought (COT):](#difference-from-chain-of-thought-cot)
+  - [Differences from Reasoning + Acting (ReAct):](#differences-from-reasoning--acting-react)
+  - [Difference from Plan-and-Execute:](#difference-from-plan-and-execute)
+  - [Differences from RAG:](#differences-from-rag)
+- [Problems to Solve](#problems-to-solve)
+  - [1. Complexity Control Issues in LLM Applications](#1-complexity-control-issues-in-llm-applications)
+  - [2. Lack of Interpretability in AI Systems](#2-lack-of-interpretability-in-ai-systems)
+  - [3. The Disconnect Between Logic and Intuition](#3-the-disconnect-between-logic-and-intuition)
+- [System Overview](#system-overview)
+  - [Core Technical Solutions](#core-technical-solutions)
+    - [1. Idempotent Function-based LLM Calls](#1-idempotent-function-based-llm-calls)
+    - [2. Ontology Space Construction and Maintenance](#2-ontology-space-construction-and-maintenance)
+    - [3. Recursive Task Decomposition and Logic Construction](#3-recursive-task-decomposition-and-logic-construction)
+    - [4. Workflow Persistence and Agent Generation](#4-workflow-persistence-and-agent-generation)
+  - [System Architecture](#system-architecture)
+    - [Global Components](#global-components)
+    - [Task-Specific Variables](#task-specific-variables)
+  - [Sequence Description](#sequence-description)
+- [Long-term Vision: Self-Evolving LogicAI](#long-term-vision-self-evolving-logicai)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ---
 
@@ -21,11 +54,13 @@ In this framework, all inputs and outputs are treated as structured data, includ
 
 The entire system combines formal logical systems with neuron-based LLMs (viewed as intuition), transferring system complexity from the LLM level to the architectural level, keeping each sub-task entering the LLM within a controllable complexity range, thereby improving the overall system's reliability and maintainability.
 
-# Explanation of core concepts
+# Explanation of concepts
 
 To better understand the design philosophy of this project, we can analogize it to the knowledge system of production line design:
 
-**Production Line Design Analogy**: Imagine an engineer needs to design a production line to manufacture a specific product. In this analogy:
+## Production Line Design Analogy:
+
+Imagine an engineer needs to design a production line to manufacture a specific product. In this analogy:
 
 - **Engineer's knowledge system** = Ontological space (similar to Prolog knowledge base)
 - **Specific production line** = Workflow
@@ -36,7 +71,7 @@ The engineer possesses professional knowledge about industrial design, process o
 
 Similarly, imagine a Prolog program with sufficient knowledge that can autonomously "design" production lines based on logical rules. In our system:
 
-**Design Layer Knowledge** (Ontological Space):
+### Design Layer Knowledge (Ontological Space):
 
 Taking coffee table floral selection as an example: designers filter suitable flowers in the flower market through dimensions such as "size," "color," and "maintenance requirements." Correspondingly, we can construct prompts to enable LLMs to make selections by progressively adding constraint conditions like "size is XXX" and "color is XXX," ultimately making the LLM's decisions converge with the designer's judgment.
 
@@ -44,7 +79,7 @@ This example demonstrates LogicAI's core philosophy: redefining prompts from sem
 
 The key lies in clearly separating the logic system construction task: through specially designed meta-prompts, enabling the LLM to systematically explore decision dimensions, automatically derive constraint conditions and logical rules, and ultimately construct a complete rule base.
 
-**Execution Layer Knowledge** (Workflow Usage):
+### Execution Layer Knowledge (Workflow Usage):
 
 For residents, as long as the flowers can bring emotional pleasure, there is no need to master the aforementioned design layer knowledge. In other words, whether a solidified workflow (Agent) can meet requirements depends on functional implementation rather than implementation methods—regardless of whether it's manually designed or AI-generated.
 
@@ -52,22 +87,22 @@ However, when residents hope to achieve emotional tranquility through flowers du
 
 Further reflection reveals that in the real world, if flowers are merely one component in a resident's product offering to their users, the resident themselves becomes a designer and can adopt the same approach. This creates nested calling relationships between workflows—though the current version does not yet support this feature.
 
-**Difference from Chain of Thought (COT)**:
+## Difference from Chain of Thought (COT):
 
 - COT method: Guides LLM linear thinking through "step by step" prompts
 - Our method: First obtains initial workflow by asking "what are the best practice steps to achieve XXX deliverables" (leveraging LLM intuition), then performs type analysis on inputs/outputs of each workflow step, builds classification trees, recursively explores processing rules, forming a logical world. By querying this logical world to analyze and improve workflows, the logical world (ontological space) and workflow implementation evolve synchronously during this process.
 
-**Differences from Reasoning + Acting (ReAct)**:
+## Differences from Reasoning + Acting (ReAct):
 
 - ReAct Method: The ReAct method adopts an AI problem-solving pattern of Reasoning + Acting + Observation, but its reasoning component relies on manual design and lacks a systematic design methodology.
 - This Method: This method focuses on optimizing the reasoning component by replacing manual design with algorithmic approaches, achieving automated construction of the reasoning process.
 
-**Difference from Plan-and-Execute**:
+## Difference from Plan-and-Execute:
 
 - Plan-and-Execute is a classic pattern in the LangChain framework that decomposes complex tasks into two separate stages: planning and execution. This approach faces a fundamental contradiction between abstraction levels and execution precision—high-level planning may lose critical context, while detailed planning may sacrifice system flexibility. Current practices with automated development tools like claude-code and Cursor demonstrate this challenge: even when focusing the abstraction level on software development domains, issues such as inconsistent code architecture and module interface conflicts still arise due to context loss.
 - This method adopts a different design philosophy: modeling LLM calls as idempotent functions and maintaining dimensional relationships between inputs and outputs through a logical system. In theory, this can ensure system flexibility while preserving context integrity, potentially avoiding the disconnect between abstraction and execution. This makes ultra-large-scale tasks such as complete novel creation and large-scale software development possible—refer to the long-term vision below for more possibilities.
 
-**Differences from RAG**:
+## Differences from RAG:
 
 - RAG is a technical architecture that enhances generation through vector retrieval of external documents, relying on semantic similarity matching. It faces a contradiction between retrieval precision and semantic understanding—vector retrieval may return semantically related but practically useless content, while keyword retrieval may miss semantically relevant information. Current enterprise applications of RAG in knowledge Q&A and document analysis demonstrate this challenge: even with advanced vector databases, issues persist such as inaccurate retrieval due to semantic drift and context understanding biases.
 - This method adopts a different design approach: documents are preprocessed into structured dimensional data stored in relational databases. Through prompts, the system first identifies the information dimensions required for a question (this problem is similar to the logical escalation mentioned above—which can be completed by humans or AI), then constructs precise SQL query statements based on these dimensions. Theoretically, this can maintain retrieval precision while ensuring information completeness, potentially avoiding the ambiguity issues of semantic retrieval and making precise retrieval tasks such as complex conditional queries and multi-dimensional information matching possible. When dimensional decomposition is sufficiently detailed, it may even be possible to completely replace vector retrieval with relational queries, achieving higher-quality information matching. This method can be used as an independent document retrieval technology, with the core difference lying in how the dimensional system is maintained: it can be manually defined by domain experts or automatically learned and optimized through AI systems.
@@ -86,45 +121,75 @@ Most LLM-based systems lack clear reasoning paths, making it difficult to trace 
 
 There is a lack of effective bridge between LLM's intuitive reasoning and expert systems' formal logical reasoning. Intuitive reasoning excels at pattern recognition, while logical reasoning ensures rigor, but the two are difficult to integrate, limiting AI applications in complex scenarios.
 
-# Solution
 
-## 1. Idempotent Function-based LLM Calls
+# System Overview
 
-Encapsulate each LLM call as an idempotent function, ensuring the same input always produces the same output, making system behavior predictable and reproducible. This design makes LLM calls similar to pure functions in traditional programming, facilitating composition and testing.
+The current version assumes delegating LogicAI to execute large-scale tasks, such as writing long novels or developing projects. All user interactions are fixed within a single task, with the goal of completing specified deliverables.
 
-## 2. Construction and Maintenance of Ontological Space
+## Core Technical Solutions
 
-The system maintains a logical space similar to a Prolog knowledge base, containing core knowledge needed for workflow design:
+### 1. Idempotent Function-based LLM Calls
 
-- **Knowledge trees (classification trees)**: Categorize all inputs and outputs into classification trees, forming hierarchical type systems
-- **Logical rule repository**: Processing rules, constraints, and transformation patterns for each data type
-- **Inference engine**: Capable of deriving new workflow design solutions based on existing rules
-- **Knowledge update mechanism**: Extract new rules and patterns from workflow execution results
+Each LLM call is encapsulated as an idempotent function, ensuring that identical inputs always produce identical outputs, making system behavior predictable and reproducible. This design makes LLM calls similar to pure functions in traditional programming, facilitating composition and testing.
 
-## 3. Recursive Task Decomposition and Logic Construction
+### 2. Ontology Space Construction and Maintenance
 
-Achieve evolution from intuition to logic through the following steps:
+The system maintains a logical space similar to a Prolog knowledge base, containing core knowledge required for designing workflows:
 
-1. **Initial intuition acquisition**: Query LLMs for best practices, obtaining initial workflows
-2. **Type analysis**: Analyze inputs/outputs of each step, building type classification trees
-3. **Rule extraction**: Recursively explore processing patterns for various types, forming logical rules
-4. **Logical querying**: Analyze workflow rationality by querying the logical world
-5. **Synchronous optimization**: Simultaneously improve workflows and logical rules based on analysis results
+- **Knowledge Tree (Classification Tree)**: All inputs and outputs are categorized into a classification tree, forming a hierarchical type system
+- **Logical Rule Base**: Processing rules, constraint conditions, and transformation patterns for each type of data
+- **Inference Engine**: Capable of deriving new workflow design solutions based on existing rules
+- **Knowledge Update Mechanism**: Extracts new rules and patterns from workflow execution results
 
-## 4. Workflow Persistence and Agent Generation
+### 3. Recursive Task Decomposition and Logic Construction
 
-Persist validated workflows as Agents, with each Agent focusing on solving specific types of problems. Users don't need to understand underlying design logic, only need to master Agent usage methods.
+Achieves evolution from intuition to logic through the following steps:
 
-# Technical Goals
+1. **Initial Intuition Acquisition**: Query LLM for best practices to obtain initial workflow
+2. **Type Analysis**: Analyze input and output of each step to construct type classification tree
+3. **Rule Extraction**: Recursively explore processing patterns of various types to form logical rules
+4. **Logical Query**: Analyze workflow rationality by querying the logical world
+5. **Synchronous Optimization**: Simultaneously improve workflow and logical rules based on analysis results
 
-1. **Logical queryability**: Build a Prolog-like knowledge base capable of analyzing and optimizing workflows through logical queries
-    
-2. **Dual-system collaboration**: Separate design knowledge from execution knowledge while promoting mutual enhancement, achieving hierarchical knowledge management
-    
-3. **Self-evolution capability**: Ontological space and workflows continuously learn and optimize during execution
-    
-4. **Knowledge reusability**: Abstract logical rules can guide the design of multiple similar workflows
-    
+### 4. Workflow Persistence and Agent Generation
+
+Persist validated workflows as Agents, with each Agent focusing on solving specific types of problems. Users need not understand the underlying design logic and only need to master Agent usage methods.
+
+## System Architecture
+
+### Global Components
+
+LogicAI maintains the following global components across all tasks and interactions:
+
+1. **Ontology Store (RDF Format)**: A shared RDF-format ontology Store for all tasks, storing concepts, class hierarchies, concept-level constraints, techniques, and processing procedures generated during runtime.
+
+2. **Built-in Finite State Machines (FSM)**:
+    - **Planning FSM**: Analyzes and decomposes deliverables, creates and initiates sub-FSMs.
+    - **Coreference Resolution FSM**: Maintains synonyms and logical metaphors in RDF. Associates identical entities through **Equivalence Checking** and **Instance Checking** using DL reasoners.
+3. **Reasoning Enhancement**: Utilizes DL reasoners such as Apache Jena to perform **Consistency Checking** and **Concept Satisfiability** verification to determine the input-output sets of Actions (functions) in FSMs. Implements custom OWL-based constraint mechanisms through SWI-Prolog's semweb library, constructing specialized constraint rules for adjectives and adverbs in the ontology, and validates and modifies FSM state transitions and their corresponding inputs and outputs based on these constraints.
+
+### Task-Specific Variables
+
+Each task initializes the following variables:
+
+1. **Deliverable Knowledge Graph**: RDF-format knowledge graph storing knowledge describing deliverable requirements, constraints, and specifications, stored in this task's Named Graph.
+2. **Task FSM**: Nested FSM responsible for specific task execution, created by built-in FSM and executed at appropriate times.
+
+## Sequence Description
+
+LogicAI's operational flow is illustrated through the following sequence description, showing the interactions from user input to task execution (the current version will postpone implementation of enhanced reasoning, so the accuracy of the ontology space relies on LLM; enhanced reasoning support will be added after achieving initial goals):
+
+1. Receive user input statements, which may contain deliverable requirements or process descriptions.
+2. Coreference Resolution FSM queries the ontology space (RDF), parses synonyms and logical metaphors, and re-expresses input to eliminate ambiguity.
+3. Planning FSM executes the following operations:
+    - Convert input to RDF, update deliverable knowledge graph, including requirements, constraints, and specifications for deliverables or sub-deliverables (imaginable as schema-less objects). If input involves processing procedures (such as sub-FSM steps or flows), handle them here and adjust corresponding sub-FSMs.
+    - Plan deliverable creation process based on deliverable knowledge graph, generate or update task FSM.
+    - Establish connections between deliverable knowledge graph and ontology space; if none exist, create new ones, including recursively querying LLM to construct related rules—with emphasis on completeness rules.
+    - Traverse FSM states in reverse order; for each state with actions in the FSM, query its completeness rules through SPARQL and check completeness between inputs and outputs—if incomplete, add inputs and recursively use Planning FSM to update FSM.
+    - For each state's output, recursively execute this Planning FSM to ensure the action's complexity is sufficiently low—through recursive decomposition.
+    - Add fault tolerance and progress reporting to task FSM.
+4. Execute task FSM—this may be a long-cycle action, using FSM persistence to pause/resume tasks.
+5. Return task progress or deliverable output to the user.
 
 # Long-term Vision: Self-Evolving LogicAI
 

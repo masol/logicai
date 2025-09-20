@@ -1,8 +1,15 @@
 /// 注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数，如同下例．
 import { type IAppContext } from "../app/context.type.js";
-import { type AiTask } from "../app/taskman.type.js";
-import { CollectName } from "../app/taskman.js";
+import { type AiTask } from "../app/task/index.type.js";
+import { CollectName } from "../app/task/taskman.js";
 import { pick } from "remeda";
+
+function pickTask(task: AiTask | null) {
+    if (task) {
+        return pick(task, ["id", "name", "time"]);
+    }
+    return task;
+}
 
 function get() {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
@@ -12,23 +19,21 @@ function get() {
         sort: "-time",
     });
 
-    // console.log("get tasks=", existingRecord)
-
     // 使用 remeda 的 pick 函数只选择需要的字段
-    return existingRecord.map((task) => pick(task, ["id", "name", "time"]));
+    return existingRecord.map((task) => pickTask(task));
 }
 
 function current() {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
     const ctx: IAppContext = this;
-    return ctx.task.currentTask()
+    return pickTask(ctx.task.currentTask());
 }
 
 
 function create(name: string) {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
     const ctx: IAppContext = this;
-    return ctx.task.create(name);
+    return pickTask(ctx.task.create(name));
 }
 
 

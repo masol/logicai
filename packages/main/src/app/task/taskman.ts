@@ -1,6 +1,6 @@
-import { type IAppContext } from "./context.type.js"
-import { AiTask, type ITaskMan } from "./taskman.type.js"
-import { getSetting, setSetting } from "../api/sys.js";
+import { type IAppContext } from "../context.type.js"
+import { AiTask, type ITaskMan } from "./index.type.js"
+import { getSetting, setSetting } from "../../api/sys.js";
 
 export const CollectName = "tasks"
 
@@ -38,7 +38,7 @@ export class TaskMan implements ITaskMan {
     loadCurrent(): void {
         const currentTask = getSetting(this.app, settingKey);
         // console.log("current task =", currentTask)
-        if (currentTask) {
+        if (currentTask?.id !== this.current?.id) {
             this.current = currentTask;
         }
     }
