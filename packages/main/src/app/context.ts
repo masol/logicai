@@ -5,6 +5,7 @@ import { IAppContext } from "./context.type.js";
 import { TaskMan } from "./task/taskman.js";
 import { getSetting } from "../api/sys.js";
 import { LLMManager } from './llms/manager.js'
+import { MachineFactory } from "./fsm/factory.js";
 
 export class AppContext implements IAppContext {
   #initstate = {
@@ -18,6 +19,7 @@ export class AppContext implements IAppContext {
   readonly history: History;
   readonly task: TaskMan;
   readonly llms: LLMManager;
+  readonly machineFactory: MachineFactory;
 
   passive: boolean = true;
 
@@ -57,6 +59,7 @@ export class AppContext implements IAppContext {
       }
     })
 
+    this.machineFactory = new MachineFactory();
     this.task = new TaskMan(this);
   }
 

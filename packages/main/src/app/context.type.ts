@@ -2,6 +2,7 @@ import { type LokiDatabase } from "./loki.js";
 import { type History } from "./history.js";
 import { type ITaskMan } from "./task/index.type.js";
 import type { ILLMManager } from './llms/index.type.js'
+import type { IMachineFactory } from "./fsm/index.type.js";
 
 export interface IAppContext {
     /**
@@ -26,7 +27,16 @@ export interface IAppContext {
      */
     readonly history: History;
 
+    /**
+     * 任务管理器.
+     */
     readonly task: ITaskMan;
+
+
+    /**
+     * fsm machine加载器.(算法加载器)
+     */
+    readonly machineFactory: IMachineFactory;
 
     /**
      * 获取初始化状态

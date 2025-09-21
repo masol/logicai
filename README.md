@@ -1,6 +1,6 @@
 # LogicAI <!-- omit in toc -->
 
-**Evolving LLM from Intuition to Logic - A Logic-Driven Workflow Orchestration System that Automatically Creates Agents for Complex Task**
+**Agent that creates Agents -- Evolving LLM from Intuition to Logic - A Logic-Driven Workflow Orchestration System that Automatically Creates Agents for Complex Task**
 
 [![Stars](https://img.shields.io/github/stars/masol/logicai?style=social)](https://github.com/masol/logicai/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
