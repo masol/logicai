@@ -1,6 +1,6 @@
 # LogicAI <!-- omit in toc -->
 
-**创建Agent的Agent——让LLM从直觉进化到逻辑，逻辑向工作流编排系统，自动创建可执行复杂任务的Agent**
+**自动生成Agent的Agent——让LLM从直觉进化到逻辑，逻辑向工作流编排系统，自动创建可执行复杂任务的Agent**
 
 [![Stars](https://img.shields.io/github/stars/masol/logicai?style=social)](https://github.com/masol/logicai/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
