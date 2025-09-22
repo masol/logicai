@@ -45,8 +45,8 @@ export class AppContext implements IAppContext {
         // console.log("models=", allModels.llm)
         this.llms.init(allModels.llm);
 
-        console.log("llm status=")
-        console.dir(this.llms.getInstancesStatus());
+        // console.log("llm status=")
+        // console.dir(this.llms.getInstancesStatus());
 
         this.onInitStep("db");
       }

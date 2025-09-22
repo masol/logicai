@@ -1,5 +1,5 @@
-import {getNodeMajorVersion} from '@app/electron-versions';
-import {spawn} from 'child_process';
+import { getNodeMajorVersion } from '@app/electron-versions';
+import { spawn } from 'child_process';
 import electronPath from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -10,37 +10,40 @@ export default /**
  * @type {import('vite').UserConfig}
  * @see https://vitejs.dev/config/
  */
-({
-  build: {
-    ssr: true,
-    sourcemap: 'inline',
-    outDir: 'dist',
-    assetsDir: '.',
-    target: `node${getNodeMajorVersion()}`,
-    lib: {
-      entry: 'src/index.ts',
-      formats: ['es'],
+  ({
+    build: {
+      ssr: true,
+      sourcemap: process.env.NODE_ENV === 'development' ? 'inline' : false,
+      outDir: 'dist',
+      assetsDir: '.',
+      target: `node${getNodeMajorVersion()}`,
+      lib: {
+        entry: {
+          index: 'src/index.ts',
+          worker: 'src/app/swipl/worker.ts',
+        },
+        formats: ['es'],
+      },
+      rollupOptions: {
+        external: [
+          'electron',
+        ],
+        output: {
+          entryFileNames: '[name].js',
+        },
+      },
+      emptyOutDir: true,
+      reportCompressedSize: false,
     },
-    rollupOptions: {
-      external: [
-        'electron',
-      ],
-      output: {
-        entryFileNames: '[name].js',
+    plugins: [
+      handleHotReload(),
+    ],
+    resolve: {
+      alias: {
+        '@app/main': path.resolve(__dirname, 'src'),
       },
     },
-    emptyOutDir: true,
-    reportCompressedSize: false,
-  },
-  plugins: [
-    handleHotReload(),
-  ],
- resolve: {
-    alias: {
-      '@app/main': path.resolve(__dirname, 'src'),
-    },
-  },
-});
+  });
 
 
 /**

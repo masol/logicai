@@ -1,5 +1,6 @@
-import { TaskFsms } from '../fsm/taskfsms.js';
-import { ITask } from './index.type.js'
+import type { IAppContext } from '../context.type.js';
+import { TaskCtx } from '../fsm/taskctx.js';
+import type { AiTask, ITask } from './index.type.js'
 import { Store } from 'n3'
 
 
@@ -8,14 +9,27 @@ export class Task implements ITask {
     readonly name: string;
     readonly time: string;
     readonly store: Store;
+    fsmsInternal!: TaskCtx;
 
-    readonly fsms: TaskFsms;
+    get fsms(): TaskCtx {
+        return this.fsmsInternal;
+    }
 
-    constructor(id: string, name: string, time: string) {
-        this.id = id;
-        this.name = name;
-        this.time = time;
+    static async create(app: IAppContext, aiTask: AiTask): Promise<Task> {
+        const task = new Task(app, aiTask);
+        await task.init(app);
+        return task;
+    }
+
+    private constructor(app: IAppContext, aiTask: AiTask) {
+        this.id = aiTask.id;
+        this.name = aiTask.name;
+        this.time = aiTask.time;
         this.store = new Store();
-        this.fsms = new TaskFsms(id);
+    }
+
+    private async init(app: IAppContext): Promise<void> {
+        console.log("init TaskCtx")
+        this.fsmsInternal = await TaskCtx.create(app, this.id);
     }
 }

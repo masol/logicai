@@ -28,12 +28,15 @@ export class TaskMan implements ITaskMan {
         return this.current;
     }
 
-    create(name: string): ITask {
-        const task: Task | null = this.loadTask({
+    async create(name: string): Promise<ITask> {
+        const task: Task | null = await this.loadTask({
             id: crypto.randomUUID(),
             name,
             time: (new Date()).toISOString()
-        })!
+        });
+        if (!task) {
+            throw new Error("can not create task!")
+        }
         const coll = this.app.db.collection<AiTask>(CollectName);
         const aiTask = cvt2Aitask(task);
         coll.insert(aiTask);
@@ -42,27 +45,29 @@ export class TaskMan implements ITaskMan {
         return task;
     }
 
-    private loadTask(aiTask: AiTask): Task | null {
+    private async loadTask(aiTask: AiTask): Promise<Task | null> {
         if (aiTask?.id !== this.current?.id) {
-            const task = new Task(aiTask.id, aiTask.name, aiTask.time);
+            const task = await Task.create(this.app, aiTask);
             return task;
         }
         return null;
     }
 
-    loadCurrent(): void {
+    async loadCurrent(): Promise<ITask | null> {
         const currentTask = getSetting(this.app, settingKey);
-        this.current = this.loadTask(currentTask);
+        this.current = await this.loadTask(currentTask);
         // console.log("current task =", currentTask)
+        return this.current;
     }
 
 
-    setActiveTask(id: string, doUpdateCurrent: boolean = true): boolean {
+    async setActiveTask(id: string, doUpdateCurrent: boolean = true): Promise<boolean> {
+        console.log("enter setActiveTask=",id,doUpdateCurrent)
         if (id !== this.current?.id) {
             const coll = this.app.db.collection(CollectName);
             const aiTask: AiTask = coll.findOne({ id });
             if (aiTask) {
-                this.current = this.loadTask(aiTask);
+                this.current = await this.loadTask(aiTask);
                 if (doUpdateCurrent) {
                     this.updateCurrent(aiTask);
                 }

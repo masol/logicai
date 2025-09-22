@@ -26,6 +26,7 @@
   - [Differences from Reasoning + Acting (ReAct):](#differences-from-reasoning--acting-react)
   - [Difference from Plan-and-Execute:](#difference-from-plan-and-execute)
   - [Differences from RAG:](#differences-from-rag)
+  - [Differences from GraphRAG and ELITE Embedding-Less Retrieval:](#differences-from-graphrag-and-elite-embedding-less-retrieval)
 - [Problems to Solve](#problems-to-solve)
   - [1. Complexity Control Issues in LLM Applications](#1-complexity-control-issues-in-llm-applications)
   - [2. Lack of Interpretability in AI Systems](#2-lack-of-interpretability-in-ai-systems)
@@ -50,7 +51,7 @@
 
 This project aims to build an intelligent task decomposition system based on logical reasoning. By treating Large Language Model (LLM) calls as idempotent functions, it achieves automated decomposition of complex tasks and workflow orchestration. The core innovation of the system lies in combining the intuitive reasoning capabilities of LLMs with formal logical systems, constructing and maintaining an ontological knowledge space to enable recursive task decomposition and automatic workflow generation and optimization.
 
-In this framework, all inputs and outputs are treated as structured data, including prompt design which follows this principle. For example, when we ask an LLM to process information in a "more accessible" or "more professional" manner, these requirements are viewed by LogicAI as adding new dimensions to the data structure - specifically manifested as adding entries like "readability level" and "professionalism degree" to the structured data. These attribute names can be dynamically obtained through LLMs, equivalent to type elevation in logic - like asking "What is an apple?" -> "An apple is a fruit", then asking "What is a fruit?" -> "A fruit is a plant product", recursively obtaining the complete classification chain: apple → fruit → plant product → biological product → matter. This structured perspective enables the system to process and optimize various seemingly ambiguous human requirements in a logical manner.
+In this framework, both the inputs and outputs of LLMs are treated as structured data, and the composition of prompts follows this principle as well, no longer viewing them as semantic but as collections of logical dimensions. For example, when we refine prompts by requesting "more accessible" or "more professional" writing, these requirements are viewed by LogicAI as adding new dimensions to the input data—specifically manifested as adding entries such as "readability level" and "professionalism degree" to the structured data. These attribute names can be dynamically obtained through LLMs, equivalent to type elevation in logic—just like asking "What is an apple?" → "An apple is a fruit," then further asking "What is a fruit?" → "A fruit is a plant product," recursively obtaining the complete classification chain: apple → fruit → plant product → biological product → matter. This structured perspective enables LogicAI to introduce logical systems for continuously optimizing the workflows it plans.
 
 The entire system combines formal logical systems with neuron-based LLMs (viewed as intuition), transferring system complexity from the LLM level to the architectural level, keeping each sub-task entering the LLM within a controllable complexity range, thereby improving the overall system's reliability and maintainability.
 
@@ -107,6 +108,12 @@ Further reflection reveals that in the real world, if flowers are merely one com
 - RAG is a technical architecture that enhances generation through vector retrieval of external documents, relying on semantic similarity matching. It faces a contradiction between retrieval precision and semantic understanding—vector retrieval may return semantically related but practically useless content, while keyword retrieval may miss semantically relevant information. Current enterprise applications of RAG in knowledge Q&A and document analysis demonstrate this challenge: even with advanced vector databases, issues persist such as inaccurate retrieval due to semantic drift and context understanding biases.
 - This method adopts a different design approach: documents are preprocessed into structured dimensional data stored in relational databases. Through prompts, the system first identifies the information dimensions required for a question (this problem is similar to the logical escalation mentioned above—which can be completed by humans or AI), then constructs precise SQL query statements based on these dimensions. Theoretically, this can maintain retrieval precision while ensuring information completeness, potentially avoiding the ambiguity issues of semantic retrieval and making precise retrieval tasks such as complex conditional queries and multi-dimensional information matching possible. When dimensional decomposition is sufficiently detailed, it may even be possible to completely replace vector retrieval with relational queries, achieving higher-quality information matching. This method can be used as an independent document retrieval technology, with the core difference lying in how the dimensional system is maintained: it can be manually defined by domain experts or automatically learned and optimized through AI systems.
 
+## Differences from [GraphRAG](https://arxiv.org/pdf/2404.16130) and [ELITE Embedding-Less Retrieval](https://arxiv.org/abs/2505.11908):
+
+- GraphRAG and ELITE methods aim to improve the retrieval accuracy of RAG systems.
+- Like GraphRAG, LogicAI also constructs knowledge graphs, but the target is not user input, but rather the behavior chains (FSM) generated by its planning. This graph is a formal system constructed from input/output and state transition information, leveraging **OWL+LLM** to mine taxonomic relationships and rules, which are then integrated into the knowledge graph. Subsequently, consistency and satisfiability checks are performed through the knowledge graph, driving the LLM to improve action chains accordingly. Meanwhile, evaluation agents assess the results and incorporate feedback into the knowledge graph in the same manner, enabling continuous optimization of behavior chains.
+
+
 # Problems to Solve
 
 ## 1. Complexity Control Issues in LLM Applications
@@ -161,8 +168,8 @@ Persist validated workflows as Agents, with each Agent focusing on solving speci
 
 LogicAI maintains the following global components across all tasks and interactions:
 
-1. **Ontology Store (RDF Format)**: A shared RDF-format ontology Store for all tasks, storing concepts, class hierarchies, concept-level constraints, techniques, and processing procedures generated during runtime.
-
+1. **Ontology Space (RDF Format)**: A shared RDF-format ontology space for all tasks, storing concepts, class hierarchies, concept-level constraints, techniques, and processing procedures generated during runtime.
+    
 2. **Built-in Finite State Machines (FSM)**:
     - **Planning FSM**: Analyzes and decomposes deliverables, creates and initiates sub-FSMs.
     - **Coreference Resolution FSM**: Maintains synonyms and logical metaphors in RDF. Associates identical entities through **Equivalence Checking** and **Instance Checking** using DL reasoners.
@@ -190,6 +197,7 @@ LogicAI's operational flow is illustrated through the following sequence descrip
     - Add fault tolerance and progress reporting to task FSM.
 4. Execute task FSM—this may be a long-cycle action, using FSM persistence to pause/resume tasks.
 5. Return task progress or deliverable output to the user.
+
 
 # Long-term Vision: Self-Evolving LogicAI
 

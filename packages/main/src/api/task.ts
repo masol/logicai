@@ -30,17 +30,18 @@ function current() {
 }
 
 
-function create(name: string) {
+async function create(name: string) {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
     const ctx: IAppContext = this;
-    return pickTask(ctx.task.create(name));
+    return pickTask(await ctx.task.create(name));
 }
 
 
-function active(id: string) {
+async function active(id: string) {
     //@ts-expect-error　注意，由于箭头函数不能绑定this,如果需要接收appContext,必须使用函数．
     const ctx: IAppContext = this;
-    return ctx.task.setActiveTask(id)
+    console.log("enter active!!!")
+    return await ctx.task.setActiveTask(id)
 }
 
 

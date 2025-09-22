@@ -16,9 +16,9 @@ export interface ITask extends AiTask {
 
 export interface ITaskMan {
     // 此时自动设置为Active.
-    create(name: string): AiTask;
+    create(name: string): Promise<ITask>;
     // getById(id: string): Promise<AiTask | null>;
     currentTask(): AiTask | null;
-    setActiveTask(id: string): boolean;
-    loadCurrent(): void;
+    setActiveTask(id: string): Promise<boolean>;
+    loadCurrent(): Promise<ITask | null>;
 }

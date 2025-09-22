@@ -33,8 +33,8 @@ async function set(name: string, value: any) {
         const models = value?.llm || [];
         ctx.llms.removeAllLLMs();
         ctx.llms.init(models);
-        console.log("llm status=")
-        console.dir(ctx.llms.getInstancesStatus());
+        // console.log("llm status=")
+        // console.dir(ctx.llms.getInstancesStatus());
     }
 }
 

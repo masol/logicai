@@ -1,6 +1,5 @@
 import type { MachineContext, MachineConfig, AnyActorLogic, ActionFunction, AnyActor, Snapshot, SnapshotFrom } from "xstate";
 
-
 export type AnyActionFunction = ActionFunction<any, any, any, any, any, any, any, any, any>;
 
 export interface IMachine<
@@ -74,4 +73,23 @@ export interface IDynamicActor {
 
 export interface IMachineFactory {
     load(id: string): Promise<IMachine>
+}
+
+
+
+// 定义接口
+export interface FsmState {
+  /** 有限状态机实例的唯一标识符 */
+  fsmId: string;
+
+  /** xstate actor 的状态快照 */
+  snapshot?: Snapshot<AnyActor>;
+
+  // 如果有，保存在当前目录下${storeId}.ttl的n3 rdf持久化版本。
+  storeId?: string;
+}
+
+export interface TaskContext {
+    entry?: FsmState;
+    subFsms?: Array<FsmState>;
 }

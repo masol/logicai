@@ -112,9 +112,7 @@ class WindowManager implements AppModule {
         this.#renderer.path
       );
 
-      await browserWindow.loadURL(
-        `${urlBase}/${path.basename(this.#renderer.path)}`
-      );
+      await browserWindow.loadURL(urlBase);
 
       // 应用关闭时关闭服务器
       browserWindow.on("closed", () => {
