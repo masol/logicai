@@ -1,6 +1,7 @@
-import type { MachineContext, MachineConfig, AnyActorLogic, ActionFunction, AnyActor, Snapshot, SnapshotFrom } from "xstate";
+import type { MachineContext, MachineConfig, AnyActorLogic, ActionFunction, AnyActor, Snapshot, SnapshotFrom, CallbackLogicFunction, PromiseActorRef, AnyEventObject } from "xstate";
 
 export type AnyActionFunction = ActionFunction<any, any, any, any, any, any, any, any, any>;
+export type MachineCfg = MachineConfig<MachineContext, AnyEventObject, never>;
 
 export interface IMachine<
     TContext extends MachineContext = any,
@@ -71,25 +72,63 @@ export interface IDynamicActor {
 }
 
 
-export interface IMachineFactory {
-    load(id: string): Promise<IMachine>
-}
-
-
-
 // 定义接口
 export interface FsmState {
-  /** 有限状态机实例的唯一标识符 */
-  fsmId: string;
+    /** 有限状态机实例的唯一标识符 */
+    id: string;
 
-  /** xstate actor 的状态快照 */
-  snapshot?: Snapshot<AnyActor>;
+    /** 状态机描述 */
+    desc?: string;
 
-  // 如果有，保存在当前目录下${storeId}.ttl的n3 rdf持久化版本。
-  storeId?: string;
+    /** xstate actor 的状态快照 */
+    snapshot?: Snapshot<AnyActor>;
+
+    // 知识库使用swipl-wasm,暂不使用n3(可导出为n3方便阅读)，文件名固定为: kc.pl。
+    // 如果有，保存在当前目录下${storeId}.ttl的n3 rdf持久化版本。
+    // storeId?: string;
 }
 
-export interface TaskContext {
-    entry?: FsmState;
+export interface IMachineFactory {
+    load(fsmState: FsmState): Promise<IDynamicActor>
+}
+
+
+
+export interface TaskFsms {
+    entry: FsmState;
     subFsms?: Array<FsmState>;
 }
+
+export type PromiseFn<Input = any, Output = any> = (args: {
+    input: Input;
+    system: any;
+    self: PromiseActorRef<Output>;
+    signal: AbortSignal;
+    emit: (emitted: any) => void;
+}) => PromiseLike<Output>;
+
+export type llmHandle = {
+    prompt?: string;
+    itpath?: string; // it在主存储区(taskctx)中的路径。
+    mapping?: Record<string, any> // 输出得到的json,存入主存储区的映射。
+}
+
+// 用于生成函数的
+export type persistedHnale = [args: string, body: string];
+
+// state5中的actor(对应v4的service)的定义结构。
+// 可持久化的元信息
+export interface SrvDefinitionMeta {
+    // 可以在invoke中调用的名称。
+    name: string;
+    // 用于传送给llm的。
+    desc?: string;
+    // 类型指明func定义是什么， 如果func为函数，则默认为promise，否则为llm.如果func为字符串，则会将其转化为函数，然后判断type.
+    type?: 'llm' | 'promise' | 'callback';// | 'observable' | 'event' | "transition" | 'actor'
+}
+
+// 运行时完整定义（判别联合）
+export type SrvDefinition =
+    | { type: 'promise'; name: string; func: PromiseFn | persistedHnale; desc?: string }
+    | { type: 'callback'; name: string; func: CallbackLogicFunction | persistedHnale; desc?: string }
+    | { type: 'llm'; name: string; func: llmHandle; desc?: string };

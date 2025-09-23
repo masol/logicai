@@ -1,112 +1,115 @@
-console.log("test123123")
-
-import { parentPort, workerData } from "worker_threads"
+import * as Comlink from "comlink";
+import nodeEndpoint from "./nodeEndpoint.js";
+import { parentPort, workerData } from "worker_threads";
+// @ts-ignore: swipl-wasm 没有类型定义
+import SWIPL, { type SWIPLModule } from "swipl-wasm";
 import fs from "fs";
 import path from "path";
-// @ts-ignore: swipl-wasm 没有类型定义
-import SWIPL from "swipl-wasm";
 
-interface WorkerMessage {
-    id: number;
-    query?: string;
-    results?: Record<string, string>[];
-    error?: string;
-}
+import prologSource from './lib/workflow.pl';
+
+console.log(prologSource);
 
 
-// 挂载宿主文件系统目录
-console.log('in swi-prolog workerData.dir=', workerData.dir)
-const swipl = await SWIPL({
-    arguments: ["-q"]
-});
+class SwiplWorker {
+    private static instance: SwiplWorker;
+    private swipl!: SWIPLModule;
+    #instId: string = "";
 
-// console.log(swipl);
-// console.log(SWIPL);
+    private constructor() {
+    }
 
-const swiplFS = swipl.FS;
+    public async create(): Promise<void> {
+        this.swipl = await SWIPL({
+            arguments: ["-q"]
+        });
+    }
 
+    public get instId() {
+        return this.#instId;
+    }
 
-async function cp2Vfs() {
-    // 简单的文件复制，避免所有挂载问题
-    try {
-        // 创建目录（如果失败就忽略）
-        try { swiplFS.mkdir("/work"); } catch (e) { }
+    public async refresh(dirName: string) {
+        console.log("dirName=", dirName)
+        this.#instId = crypto.randomUUID();
+    }
 
-        // 直接复制 .pl 文件
-        const files = await fs.promises.readdir(workerData.dir);
-        for (const file of files) {
-            if (file.endsWith('.pl')) {
-                const content = await fs.promises.readFile(path.join(workerData.dir, file), 'utf8');
-                swiplFS.writeFile(`/work/${file}`, content);
-                console.log(`Loaded: ${file}`);
-            }
+    public static async inst(): Promise<SwiplWorker> {
+        if (!this.instance) {
+            this.instance = new SwiplWorker();
+            await this.instance.create();
         }
-
-        console.log('File setup complete');
-
-    } catch (error) {
-        console.error('Setup error:', error);
-        // 继续运行，可能不需要文件系统
+        return this.instance;
     }
-}
-// await cp2Vfs();
 
-// 暂时让 TS 忽略类型,@todo: mount不工作，直接拷贝，这带来销毁时的同步压力！！
-// const NODEFS = (swipl as any).NODEFS;
-try { swiplFS.mkdir("/work"); } catch (e) { }
-
-
-// 检查 mount 函数和可用的文件系统
-console.log('FS has mount function:', typeof swiplFS.mount === 'function');
-console.log('FS object keys:', Object.keys(swiplFS));
-
-// @ts-ignore 检查文件系统注册表
-if (swiplFS.filesystems) {
-    // @ts-ignore 检查文件系统注册表
-    console.log('Available filesystems:', Object.keys(swiplFS.filesystems));
-    // @ts-ignore 检查文件系统注册表
-    console.log('NODEFS available:', 'NODEFS' in swiplFS.filesystems);
-} else {
-    console.log('No filesystems registry found');
-}
-
-// @ts-ignore 检查全局或模块级别的 NODEFS
-console.log('swipl.NODEFS:', !!swipl.NODEFS);
-console.log('swipl.Module?.NODEFS:', !!(swipl as any).Module?.NODEFS);
-
-// 检查是否有其他文件系统类型
-const potentialFS = ['NODEFS', 'IDBFS', 'MEMFS', 'WORKERFS'];
-potentialFS.forEach(fsType => {
-    if ((swiplFS as any)[fsType]) {
-        console.log(`Found ${fsType}:`, !!(swiplFS as any)[fsType]);
-    }
-});
-// await swipl.FS.mount(NODEFS, { root: workerData.dir }, "/work");
-// try {
-//     // @ts-ignore
-//     await swiplFS.mount("NODEFS", { root: workerData.dir }, "/work");
-//     console.log('✓ Native mount successful');
-// } catch (error) {
-//     console.log('✗ Native mount failed:', error.message);
-// }
-console.log("inited")
-
-async function initProlog(): Promise<void> {
-    parentPort?.on("message", async ({ id, query }: WorkerMessage) => {
-        console.log("recieve msg=", id, query)
+    private async vp2Vfs() {
+        // 简单的文件复制，避免所有挂载问题
         try {
+            const swiplFS = this.swipl.FS;
+            // 创建目录（如果失败就忽略）
+            try { swiplFS.mkdir("/work"); } catch (e) { }
 
-            const results: Record<string, string>[] = [];
-            const result = swipl.prolog.query("directory_files('/work', Files).")
-            console.log("result.once()=")
-            console.log(result.once());
+            // 直接复制 .pl 文件
+            const files = await fs.promises.readdir(workerData.dir);
+            for (const file of files) {
+                if (file.endsWith('.pl')) {
+                    const content = await fs.promises.readFile(path.join(workerData.dir, file), 'utf8');
+                    swiplFS.writeFile(`/work/${file}`, content);
+                    console.log(`Loaded: ${file}`);
+                }
+            }
 
-            parentPort?.postMessage({ id, query, results });
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            parentPort?.postMessage({ error: msg });
+            console.log('File setup complete');
+
+        } catch (error) {
+            console.error('Setup error:', error);
+            // 继续运行，可能不需要文件系统
         }
-    });
+    }
+
+    public async query(query: string) {
+        const results: Record<string, string>[] = [];
+        const result = this.swipl.prolog.query("directory_files('/', Files).")
+        console.log("result.once()=")
+        const onceResult = result.once()
+        console.log(onceResult);
+        return onceResult;
+    }
+
 }
 
-initProlog();
+const api = {
+    async init() {
+        // console.log("enter init")
+        return true;
+    },
+    async dispatch(
+        instanceId: string,
+        funcName: string,
+        ...args: any[]
+    ): Promise<any> {
+        // console.log("enter dispatch")
+        const sw = await SwiplWorker.inst();
+
+        if (funcName === "refresh") {
+            await sw.refresh(args[0]);   // args 第一个就是原本的 arguments[2]
+            return sw.instId;
+        }
+
+        if (instanceId !== sw.instId) {
+            throw new Error(`${instanceId}实例对象已销毁!`);
+        }
+
+        const target = (sw as any)[funcName];
+
+        if (typeof target === "function") {
+            const r = await target.apply(sw, args);
+            // console.log("dispatch return type:", typeof r, r && r.constructor?.name);
+            return r;
+        }
+
+        throw new Error(`${funcName} 方法未支持`);
+    }
+};
+
+Comlink.expose(api, nodeEndpoint(parentPort));

@@ -59,7 +59,7 @@ export class AppContext implements IAppContext {
       }
     })
 
-    this.machineFactory = new MachineFactory();
+    this.machineFactory = new MachineFactory(this);
     this.task = new TaskMan(this);
   }
 

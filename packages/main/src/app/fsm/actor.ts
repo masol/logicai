@@ -1,11 +1,11 @@
 import {
-    createMachine,
     createActor,
     type AnyActor,
     type Snapshot,
-    type SnapshotFrom
+    type SnapshotFrom,
+    setup
 } from "xstate";
-import type { IDynamicActor } from "./index.type.js";
+import type { IDynamicActor, MachineCfg } from "./index.type.js";
 import { Machine } from "./machine.js";
 
 /**
@@ -15,8 +15,8 @@ export class DynamicActor implements IDynamicActor {
     private machineManager: Machine<any, any>;
     private currentActor: AnyActor | null = null;
 
-    constructor() {
-        this.machineManager = new Machine<any, any>();
+    constructor(initialConfig: MachineCfg = {} as any) {
+        this.machineManager = new Machine(initialConfig);
     }
 
     get machine() {
@@ -40,6 +40,7 @@ export class DynamicActor implements IDynamicActor {
         // 停掉旧 actor
         if (this.currentActor) {
             this.currentActor.stop();
+            this.currentActor = null;
         }
 
         // 获取完整配置
@@ -53,11 +54,7 @@ export class DynamicActor implements IDynamicActor {
             newConfig.context = snapshot.context;
         }
 
-        // 创建 machine
-        const machine = createMachine(newConfig, {
-            actors: this.machineManager.actors,
-            actions: this.machineManager.actions
-        });
+        const machine = setup(this.machine.setup).createMachine(newConfig as Record<string,any>);
 
         // v5: createActor 可以直接带 snapshot
         this.currentActor = createActor(machine, snapshot ? { snapshot } : {});

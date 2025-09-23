@@ -1,21 +1,25 @@
-import { promises as fs } from "fs";
-import * as path from "path";
-import type { AnyActorLogic, AnyStateMachine, MachineConfig } from "xstate";
-import { fromPromise, fromTransition } from "xstate";
+// import { promises as fs } from "fs";
+// import * as path from "path";
+import type { AnyActorLogic, CallbackLogicFunction, MachineConfig } from "xstate";
+import { fromCallback, fromPromise } from "xstate";
 import plan from './plan/index.js'
-import type { IMachine, IMachineFactory } from "./index.type.js";
-import { Machine } from "./machine.js";
+import type { FsmState, IDynamicActor, IMachineFactory, llmHandle, MachineCfg, PromiseFn, SrvDefinition } from "./index.type.js";
+// import { Machine } from "./machine.js";
+import { DynamicActor } from "./actor.js";
+import type { IAppContext } from "../context.type.js";
+import { isArray } from "remeda";
 
 type MachineDefinition = MachineConfig<any, any>
 
 export class MachineFactory implements IMachineFactory {
-    // private baseDir: string;
+    private app: IAppContext;
 
-    constructor() {
-        // this.baseDir = baseDir;
+    constructor(app: IAppContext) {
+        this.app = app;
     }
 
-    async load(id: string): Promise<IMachine> {
+    async load(fsmState: FsmState): Promise<IDynamicActor> {
+        const id = fsmState.id;
         const isUUID =
             /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -23,105 +27,72 @@ export class MachineFactory implements IMachineFactory {
             throw new Error(`Unsupported id: ${id}`);
             // return this.loadByUUID(id);
         } else if (id === "plan") {
-            const machine = new Machine(plan.machine)
-            return machine;
+            const actor = new DynamicActor(plan.machine as unknown as MachineCfg)
+
+            if (isArray(plan?.setup?.actors)) {
+                let allActors = {}
+                for (const actorDef of plan.setup.actors) {
+                    allActors = {
+                        ...allActors,
+                        ...this.loadServices(actorDef as unknown as SrvDefinition)
+                    }
+                }
+                actor.machine.addActor(allActors);
+
+                actor.rebuild(fsmState.snapshot);
+            }
+            return actor;
         } else {
             throw new Error(`Unsupported id: ${id}`);
         }
+
     }
 
-    // private async loadByUUID(id: string): Promise<MachineDefinition> {
-    //     const dir = path.resolve(this.baseDir, id);
-    //     const machinePath = path.join(dir, "machine.json");
-    //     const serviceJsonPath = path.join(dir, "service.json");
-    //     const serviceJsPath = path.join(dir, "service.js");
+    private procLlmHandle(def: SrvDefinition): AnyActorLogic {
+        throw new Error("NOT IMPLEMENT procLlmHandle!")
+        // 这里写你实际 LLM 的处理逻辑
+    }
 
-    //     // 读取 machine.json
-    //     const machineJson = await this.safeReadJson(machinePath);
+    private loadServices(definition: SrvDefinition): Record<string, AnyActorLogic> {
+        let { name, type, func } = definition;
+        let actorLogic: AnyActorLogic;
 
-    //     const machine: MachineDefinition = {
-    //         ...machineJson,
-    //         actors: {},
-    //     };
+        if (!name) {
+            return {};
+        }
 
-    //     // service.json -> 转 Actor
-    //     if (await this.exists(serviceJsonPath)) {
-    //         const serviceDef = await this.safeReadJson(serviceJsonPath);
-    //         const actors = this.transformServiceToActors(serviceDef);
-    //         machine.actors = { ...machine.actors, ...actors };
-    //     }
+        // 1️⃣ 如果 func 是字符串，构造成函数 (默认 Promise)
+        if (Array.isArray(func) && func.length === 2 && func.every((item) => typeof item === "string")) {
+            const [args, body] = func;
+            try {
+                func = new Function(args, body) as PromiseFn;
+            } catch (err) {
+                throw new Error(`Failed to parse function array for service "${name}": ${err}`);
+            }
+        }
 
-    //     // service.js -> import actor
-    //     if (await this.exists(serviceJsPath)) {
-    //         const serviceModule = await import(serviceJsPath);
-    //         const actor: AnyActorLogic | undefined = serviceModule.default;
-    //         if (actor) {
-    //             machine.actors = {
-    //                 ...machine.actors,
-    //                 [path.basename(serviceJsPath, ".js")]: actor,
-    //             };
-    //         }
-    //     }
+        // 2️⃣ 如果 func 是对象，则认为是 llm，移交 procLlmHandle
+        if (typeof func === "object") {
+            return { [name]: this.procLlmHandle(definition) };
+        }
 
-    //     return machine;
-    // }
+        // 3️⃣ 如果 type 无值，默认当做 promise
+        const finalType = type ?? "promise";
 
-    // private transformServiceToActors(
-    //     serviceDef: any
-    // ): Record<string, AnyActorLogic> {
-    //     const actors: Record<string, AnyActorLogic> = {};
+        switch (finalType) {
+            case "promise":
+                actorLogic = fromPromise(func as PromiseFn);
+                break;
+            case "callback":
+                actorLogic = fromCallback(func as CallbackLogicFunction);
+                break;
+            case "llm":
+                actorLogic = this.procLlmHandle({ ...definition, type: "llm", func: func as llmHandle });
+                break;
+            default:
+                throw new Error(`Unknown service type: ${finalType}`);
+        }
 
-    //     // 假定 service.json 里定义格式类似：
-    //     // [
-    //     //   { id: "fetchUser", type: "promise", src: "./actors/fetchUser.ts" },
-    //     //   { id: "counter", type: "transition" }
-    //     // ]
-    //     if (Array.isArray(serviceDef)) {
-    //         for (const svc of serviceDef) {
-    //             if (!svc.id) continue;
-    //             if (svc.type === "promise" && svc.src) {
-    //                 // 动态导入 promise 函数
-    //                 actors[svc.id] = fromPromise(async (ctx, e) => {
-    //                     const mod = await import(svc.src);
-    //                     return await mod.default(ctx, e);
-    //                 });
-    //             } else if (svc.type === "transition") {
-    //                 actors[svc.id] = fromTransition(
-    //                     (state: any, event: any) => {
-    //                         // 你可以在 service.json 定义 transition 逻辑
-    //                         return { ...state, lastEvent: event };
-    //                     },
-    //                     {}
-    //                 );
-    //             }
-    //         }
-    //     } else if (typeof serviceDef === "object") {
-    //         // 如果是 { id: def } 格式
-    //         for (const [id, def] of Object.entries<any>(serviceDef)) {
-    //             if (def.type === "promise" && def.src) {
-    //                 actors[id] = fromPromise(async (ctx, e) => {
-    //                     const mod = await import(def.src);
-    //                     return await mod.default(ctx, e);
-    //                 });
-    //             }
-    //         }
-    //     }
-
-    //     return actors;
-    // }
-
-    // private async safeReadJson(filePath: string): Promise<any> {
-    //     if (!(await this.exists(filePath))) return {};
-    //     const text = await fs.readFile(filePath, "utf-8");
-    //     return JSON.parse(text);
-    // }
-
-    // private async exists(filePath: string): Promise<boolean> {
-    //     try {
-    //         await fs.access(filePath);
-    //         return true;
-    //     } catch {
-    //         return false;
-    //     }
-    // }
+        return { [name]: actorLogic };
+    }
 }

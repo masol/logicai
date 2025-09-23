@@ -1,7 +1,7 @@
-import type { AnyActorLogic, MachineConfig, MachineContext } from "xstate";
+import type { AnyActorLogic, MachineContext } from "xstate";
 import { clone } from "remeda";
 import type {
-    IMachine, AnyActionFunction
+    IMachine, AnyActionFunction, MachineCfg
 } from "./index.type.js";
 
 
@@ -12,18 +12,18 @@ export class Machine<
     TContext extends MachineContext = any,
     THelper = any
 > implements IMachine<TContext, THelper> {
-    private configInternal: MachineConfig<TContext, any, any>;
+    private configInternal: MachineCfg;
     private actorsInternal: Record<string, AnyActorLogic> = {};
     private actionsInternal: Record<string, AnyActionFunction> = {};
 
-    constructor(initialConfig: MachineConfig<TContext, any, any> = {} as any) {
+    constructor(initialConfig: MachineCfg = {} as any) {
         this.configInternal =
             Object.keys(initialConfig).length > 0
-                ? (clone(initialConfig) as MachineConfig<TContext, any, any>)
+                ? (clone(initialConfig) as MachineCfg)
                 : ({
                     id: crypto.randomUUID(),
                     states: {},
-                } as MachineConfig<TContext, any, any>);
+                } as MachineCfg);
     }
 
     /** 配置是否可运行 */
@@ -34,7 +34,7 @@ export class Machine<
     }
 
     /** 只读 config（标准的 MachineConfig 视图，不带 actors/actions） */
-    get config(): MachineConfig<any, any, any> {
+    get config(): MachineCfg {
         return clone(this.configInternal);
     }
 
@@ -46,6 +46,13 @@ export class Machine<
     /** 只读 actions */
     get actions(): Readonly<Record<string, AnyActionFunction>> {
         return this.actionsInternal;
+    }
+
+    get setup() {
+        return {
+            actors: this.actors,
+            actions: this.actions
+        }
     }
 
     /**

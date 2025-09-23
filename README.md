@@ -91,7 +91,7 @@ Further reflection reveals that in the real world, if flowers are merely one com
 ## Difference from Chain of Thought (COT):
 
 - COT method: Guides LLM linear thinking through "step by step" prompts
-- Our method: First obtains initial workflow by asking "what are the best practice steps to achieve XXX deliverables" (leveraging LLM intuition), then performs type analysis on inputs/outputs of each workflow step, builds classification trees, recursively explores processing rules, forming a logical world. By querying this logical world to analyze and improve workflows, the logical world (ontological space) and workflow implementation evolve synchronously during this process.
+- Our method: First obtains initial workflow by asking "what are the best practice steps to achieve XXX deliverables" (leveraging LLM intuition), then performs type analysis on inputs/outputs of each workflow step, builds classification trees, recursively explores processing rules, forming a logical world. By querying this logical world to analyze and improve workflows, the logical world (ontological space) and workflow implementation evolve synchronously during this process.This introduces the concept of COB (Chain of Behavior) - details will be described in a paper.
 
 ## Differences from Reasoning + Acting (ReAct):
 
