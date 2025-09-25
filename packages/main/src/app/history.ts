@@ -1,31 +1,8 @@
 import sqlite3 from 'sqlite3';
-import * as nodejieba from 'nodejieba';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-
-export interface MessageContent {
-    content: string;
-    files?: {
-        filename: string;
-        type: string;
-        desc?: string;
-    }[];
-    progressId?: string;
-    progressCtx?: string[];
-}
-
-export interface Message {
-    id: string;
-    type: "ai" | "user" | "sys";
-    taskId: string;  //添加所属task，用来缩减token消耗。
-    content: MessageContent;
-    timestamp: number;
-}
-
-export interface HistoryLoadResult {
-    messages: Message[];
-    total: number;
-}
+import type { MessageContent, Message, HistoryLoadResult } from './history.type.js'
+import nodejieba from 'nodejieba';
+import fs from 'fs/promises';
+import path from 'path';
 
 export class History {
     private db!: sqlite3.Database;
@@ -366,9 +343,9 @@ export class History {
             text += ' ' + fileTexts.join(' ');
         }
 
-        // 添加progressCtx内容到搜索文本中
-        if (content.progressCtx && content.progressCtx.length > 0) {
-            text += ' ' + content.progressCtx.join(' ');
+        // 添加processingSteps内容到搜索文本中
+        if (content.processingSteps && content.processingSteps.length > 0) {
+            text += ' ' + content.processingSteps.join(' ');
         }
 
         return text;
@@ -376,24 +353,21 @@ export class History {
 
     private async tokenizeContent(text: string): Promise<string> {
         return new Promise((resolve) => {
-            // 使用setImmediate让分词操作异步，避免阻塞事件循环
-            setImmediate(() => {
-                try {
-                    // 使用nodejieba进行中文分词
-                    const tokens = nodejieba.cut(text);
+            try {
+                // 使用nodejieba进行中文分词
+                const tokens = nodejieba.cut(text);
 
-                    // 过滤掉过短的词和标点符号
-                    const filteredTokens = tokens.filter(token => {
-                        const trimmed = token.trim();
-                        return trimmed.length > 1 && !/^[^\w\u4e00-\u9fa5]+$/.test(trimmed);
-                    });
+                // 过滤掉过短的词和标点符号
+                const filteredTokens = tokens.filter(token => {
+                    const trimmed = token.trim();
+                    return trimmed.length > 1 && !/^[^\w\u4e00-\u9fa5]+$/.test(trimmed);
+                });
 
-                    resolve(filteredTokens.join(' '));
-                } catch (error) {
-                    console.error('分词失败，使用原始文本:', error);
-                    resolve(text);
-                }
-            });
+                resolve(filteredTokens.join(' '));
+            } catch (error) {
+                console.error('分词失败，使用原始文本:', error);
+                resolve(text);
+            }
         });
     }
 
@@ -408,12 +382,12 @@ export class History {
     }): Message {
         const content = JSON.parse(row.content_json) as MessageContent;
 
-        // 从数据库中恢复progressId和progressCtx
+        // 从数据库中恢复isProcessing和processingSteps
         if (row.progress_id) {
-            content.progressId = row.progress_id;
+            content.isProcessing = !!row.progress_id;
         }
         if (row.progress_ctx_json) {
-            content.progressCtx = JSON.parse(row.progress_ctx_json);
+            content.processingSteps = JSON.parse(row.progress_ctx_json);
         }
 
         return {
@@ -477,8 +451,8 @@ export class History {
             const contentJson = JSON.stringify(message.content);
             const contentText = this.extractTextContent(message.content);
             const contentTokens = await this.tokenizeContent(contentText);
-            const progressId = message.content.progressId || null;
-            const progressCtxJson = message.content.progressCtx ? JSON.stringify(message.content.progressCtx) : null;
+            const isProcessing = message.content.isProcessing ? "true" : null;
+            const progressCtxJson = message.content.processingSteps ? JSON.stringify(message.content.processingSteps) : null;
 
             await this.runAsync(`
                 INSERT INTO messages (id, type, task_id, content_json, content_text, content_tokens, progress_id, progress_ctx_json, timestamp)
@@ -490,7 +464,7 @@ export class History {
                 contentJson,
                 contentText,
                 contentTokens,
-                progressId,
+                isProcessing,
                 progressCtxJson,
                 message.timestamp
             ]);
@@ -519,8 +493,8 @@ export class History {
                 const contentJson = JSON.stringify(message.content);
                 const contentText = this.extractTextContent(message.content);
                 const contentTokens = await this.tokenizeContent(contentText);
-                const progressId = message.content.progressId || null;
-                const progressCtxJson = message.content.progressCtx ? JSON.stringify(message.content.progressCtx) : null;
+                const isProcessing = message.content.isProcessing ? 'true' : null;
+                const progressCtxJson = message.content.processingSteps ? JSON.stringify(message.content.processingSteps) : null;
 
                 await this.runAsync(`
                     INSERT OR REPLACE INTO messages (id, type, task_id, content_json, content_text, content_tokens, progress_id, progress_ctx_json, timestamp)
@@ -532,7 +506,7 @@ export class History {
                     contentJson,
                     contentText,
                     contentTokens,
-                    progressId,
+                    isProcessing,
                     progressCtxJson,
                     message.timestamp
                 ]);
@@ -562,8 +536,8 @@ export class History {
             const contentJson = JSON.stringify(content);
             const contentText = this.extractTextContent(content);
             const contentTokens = await this.tokenizeContent(contentText);
-            const progressId = content.progressId || null;
-            const progressCtxJson = content.progressCtx ? JSON.stringify(content.progressCtx) : null;
+            const isProcessing = content.isProcessing ? 'true' : null;
+            const progressCtxJson = content.processingSteps ? JSON.stringify(content.processingSteps) : null;
 
             const result = await this.runAsync(`
                 UPDATE messages 
@@ -573,7 +547,7 @@ export class History {
                 contentJson,
                 contentText,
                 contentTokens,
-                progressId,
+                isProcessing,
                 progressCtxJson,
                 messageId
             ]);
@@ -618,42 +592,42 @@ export class History {
     /**
      * 根据progressId获取相关消息
      */
-    public async getMessagesByProgressId(progressId: string, taskId?: string): Promise<Message[]> {
-        if (!this.isInitialized) {
-            throw new Error('数据库未初始化完成');
-        }
+    // public async getMessagesByProgressId(progressId: string, taskId?: string): Promise<Message[]> {
+    //     if (!this.isInitialized) {
+    //         throw new Error('数据库未初始化完成');
+    //     }
 
-        try {
-            let sql = `
-                SELECT id, type, task_id, content_json, progress_id, progress_ctx_json, timestamp
-                FROM messages
-                WHERE progress_id = ?
-            `;
-            const params: any[] = [progressId];
+    //     try {
+    //         let sql = `
+    //             SELECT id, type, task_id, content_json, progress_id, progress_ctx_json, timestamp
+    //             FROM messages
+    //             WHERE progress_id = ?
+    //         `;
+    //         const params: any[] = [progressId];
 
-            if (taskId) {
-                sql += ' AND task_id = ?';
-                params.push(taskId);
-            }
+    //         if (taskId) {
+    //             sql += ' AND task_id = ?';
+    //             params.push(taskId);
+    //         }
 
-            sql += ' ORDER BY timestamp ASC';
+    //         sql += ' ORDER BY timestamp ASC';
 
-            const rows = await this.allAsync(sql, params) as Array<{
-                id: string;
-                type: string;
-                task_id: string;
-                content_json: string;
-                progress_id: string | null;
-                progress_ctx_json: string | null;
-                timestamp: number;
-            }>;
+    //         const rows = await this.allAsync(sql, params) as Array<{
+    //             id: string;
+    //             type: string;
+    //             task_id: string;
+    //             content_json: string;
+    //             progress_id: string | null;
+    //             progress_ctx_json: string | null;
+    //             timestamp: number;
+    //         }>;
 
-            return rows.map(row => this.rowToMessage(row));
-        } catch (error) {
-            console.error('根据progressId获取消息失败:', error);
-            throw error;
-        }
-    }
+    //         return rows.map(row => this.rowToMessage(row));
+    //     } catch (error) {
+    //         console.error('根据progressId获取消息失败:', error);
+    //         throw error;
+    //     }
+    // }
 
     /**
      * 分页获取指定taskId的消息

@@ -1,4 +1,6 @@
 import type { MachineContext, MachineConfig, AnyActorLogic, ActionFunction, AnyActor, Snapshot, SnapshotFrom, CallbackLogicFunction, PromiseActorRef, AnyEventObject } from "xstate";
+import type { IAppContext } from "../context.type.js";
+import type { SWipl } from "../swipl/swipl.js";
 
 export type AnyActionFunction = ActionFunction<any, any, any, any, any, any, any, any, any>;
 export type MachineCfg = MachineConfig<MachineContext, AnyEventObject, never>;
@@ -94,7 +96,7 @@ export interface IMachineFactory {
 
 
 
-export interface TaskFsms {
+export interface PersistFsm {
     entry: FsmState;
     subFsms?: Array<FsmState>;
 }
@@ -132,3 +134,58 @@ export type SrvDefinition =
     | { type: 'promise'; name: string; func: PromiseFn | persistedHnale; desc?: string }
     | { type: 'callback'; name: string; func: CallbackLogicFunction | persistedHnale; desc?: string }
     | { type: 'llm'; name: string; func: llmHandle; desc?: string };
+
+
+
+    /**
+ * 任务上下文接口，用于管理任务的状态机（FSM）、上下文数据和存储。
+ */
+export interface ITaskCtx {
+    /**
+     * 任务的唯一标识符 (UUID)
+     */
+    readonly id: string;
+
+    /**
+     * 任务的根目录路径
+     */
+    readonly taskDir: string;
+
+    /**
+     * 应用上下文，提供全局服务和配置
+     */
+    readonly app: IAppContext;
+
+    /**
+     * 当前任务的状态机上下文数据。
+     * 注意：此对象是可变的，但更新应通过 assign 方法进行（如果存在）。
+     * 实际上只读引用，内容可变。
+     */
+    context: Record<string, any>;
+
+    /**
+     * 入口状态机（FSM），即任务的主流程控制器。
+     * 如果未设置，访问时会抛出错误。
+     */
+    readonly entry: IDynamicActor;
+
+    /**
+     * 子状态机组，按 ID 索引。
+     * 用于存放 plan 内部调用的其他 FSM 实例（如 service、action 等）。
+     */
+    readonly subFsms: Record<string, IDynamicActor>;
+
+    /**
+     * SWI-Prolog 存储实例，用于持久化和查询任务相关的逻辑/本体数据。
+     */
+    readonly store: SWipl;
+
+    /**
+     * 静态创建方法（工厂模式），用于异步初始化 TaskCtx 实例。
+     * @param app 应用上下文
+     * @param id 可选的任务 ID，若未提供则自动生成
+     * @returns 初始化完成的 ITaskCtx 实例
+     */
+    // 注意：TypeScript 中接口不能直接声明 static 方法，但可通过文档说明或模块导出约定表达
+    // 实际使用中，create 方法由 TaskCtx 实现，使用者通过 TaskCtx.create 调用
+}

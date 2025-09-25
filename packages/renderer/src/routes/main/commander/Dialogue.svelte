@@ -19,7 +19,6 @@
   import NoTask from "./NoTask.svelte";
 
   let scrollContainer = $state<HTMLDivElement>();
-  let chatState = $state($chatStore);
   let showScrollButtons = $state(false);
   let isNearTop = $state(false);
   let isNearBottom = $state(true);
@@ -28,22 +27,14 @@
     currentTaskStore.value?.id && currentTaskStore.value?.name,
   );
 
-  // 订阅store变化
-  $effect(() => {
-    const unsubscribe = chatStore.subscribe((state) => {
-      chatState = state;
-    });
-    return unsubscribe;
-  });
-
   // 消息列表（按时间倒序显示，最新的在上面）
-  let displayedMessages = $derived([...chatState.messages].reverse());
+  let displayedMessages = $derived($chatStore.messages);
 
   // 检查是否需要显示历史按钮
   let needsHistoryButton = $derived(
-    chatState.totalCount > chatState.messages.length &&
-      chatState.totalCount > 0 &&
-      chatState.messages.length > 0,
+    $chatStore.totalCount > $chatStore.messages.length &&
+      $chatStore.totalCount > 0 &&
+      $chatStore.messages.length > 0,
   );
 
   // 检查是否有消息
@@ -51,20 +42,8 @@
 
   // 时间格式化函数
   const formatTime = (timestamp: number) => {
-    const now = dayjs();
     const messageTime = dayjs(timestamp);
-
-    if (now.diff(messageTime, "minute") < 1) {
-      return "刚刚";
-    } else if (now.diff(messageTime, "minute") < 60) {
-      return `${now.diff(messageTime, "minute")}分钟前`;
-    } else if (now.diff(messageTime, "hour") < 24) {
-      return `${now.diff(messageTime, "hour")}小时前`;
-    } else if (now.diff(messageTime, "day") < 7) {
-      return messageTime.format("dddd HH:mm");
-    } else {
-      return messageTime.format("MM-DD HH:mm");
-    }
+    return messageTime.fromNow();
   };
 
   // 完整时间格式化函数
@@ -161,7 +140,7 @@
             animate:flip={{ duration: 400, easing: quintOut }}
             in:slide={{ duration: 300, delay: 50, easing: quintOut }}
             out:fade={{ duration: 200 }}
-            class="group transform transition-all duration-300 hover:scale-[1.01]"
+            class=""
           >
             {#if message.type === "ai"}
               <div class="flex items-end space-x-3">
@@ -173,7 +152,7 @@
                 </div>
                 <!-- AI 对话气泡 -->
                 <div
-                  class="relative max-w-[calc(100%-3rem)] rounded-2xl rounded-bl-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm"
+                  class="relative max-w-[calc(100%-3rem)] rounded-2xl rounded-bl-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-muted/70"
                 >
                   <!-- 气泡尾巴 -->
                   <div
@@ -200,7 +179,7 @@
                 </div>
               </div>
             {:else if message.type === "user"}
-              <div class="flex items-end justify-end space-x-3">
+              <div class="flex items-end justify-end space-x-3 group transform transition-all duration-300 hover:scale-[1.01]">
                 <!-- 用户对话气泡 -->
                 <div
                   class="relative max-w-[calc(100%-3rem)] rounded-2xl rounded-br-sm bg-blue-500 dark:bg-blue-600 shadow-sm"
@@ -233,7 +212,7 @@
                 </div>
               </div>
             {:else if message.type === "sys"}
-              <div class="flex justify-center">
+              <div class="flex justify-center group transform transition-all duration-300 hover:scale-[1.01]">
                 <div
                   class="flex items-center space-x-2 rounded-full bg-gray-100/50 dark:bg-gray-800/50 px-4 py-2 shadow-sm"
                 >
@@ -309,7 +288,7 @@
         class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"
       >
         <span class="font-medium"
-          >显示 {chatState.messages.length} / {chatState.totalCount} 条消息</span
+          >显示 {$chatStore.messages.length} / {$chatStore.totalCount} 条消息</span
         >
         {#if needsHistoryButton}
           <button

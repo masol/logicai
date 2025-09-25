@@ -5,9 +5,7 @@ import { loadHistory } from './stores/chatStore'
 
 export async function initLib(): Promise<void> {
   eventBus.init();
-  await Promise.all([
-    loadHistory(),
-    initSharedStores()
-  ])
+  await initSharedStores();
+  await loadHistory();
 }
 

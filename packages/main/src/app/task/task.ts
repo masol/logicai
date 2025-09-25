@@ -1,17 +1,16 @@
 import type { IAppContext } from '../context.type.js';
-import { TaskCtx } from '../fsm/taskctx.js';
+import type { ITaskCtx } from '../fsm/index.type.js';
 import type { AiTask, ITask } from './index.type.js'
-import { Store } from 'n3'
+import { TaskCtx } from '../fsm/taskctx.js';
 
 
 export class Task implements ITask {
     readonly id: string;
     readonly name: string;
     readonly time: string;
-    readonly store: Store;
-    fsmsInternal!: TaskCtx;
+    fsmsInternal!: ITaskCtx;
 
-    get fsms(): TaskCtx {
+    get ctx(): ITaskCtx {
         return this.fsmsInternal;
     }
 
@@ -25,7 +24,6 @@ export class Task implements ITask {
         this.id = aiTask.id;
         this.name = aiTask.name;
         this.time = aiTask.time;
-        this.store = new Store();
     }
 
     private async init(app: IAppContext): Promise<void> {

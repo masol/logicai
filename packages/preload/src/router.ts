@@ -72,5 +72,6 @@ export const rpc = {
         current: async (...args: any[]) => electronInvoke("task.current", ...args),
         create: async (...args: any[]) => electronInvoke("task.create", ...args),
         active: async (...args: any[]) => electronInvoke("task.active", ...args),
+        userInput: async (...args: any[]) => electronInvoke("task.userInput", ...args),
     }
 };

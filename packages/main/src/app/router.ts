@@ -35,7 +35,7 @@ export async function applyRoute(
         }
         
         // 修复2：正确处理apply的参数类型
-        const result = await (func as Function).call(ctx, ...args);
+        const result = await (func as Function)(ctx, ...args);
         
         return {
             ok: true,

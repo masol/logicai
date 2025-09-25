@@ -5,6 +5,8 @@
   import { cubicOut } from "svelte/easing";
   import { type MessageContent } from "$lib/stores/chatStore";
   import Markdown from "svelte-exmarkdown";
+  import type { Plugin } from "svelte-exmarkdown";
+  import rehypeRaw from "rehype-raw";
   import IconMdiFile from "~icons/mdi/file";
   import IconMdiChevronDown from "~icons/mdi/chevron-down";
   import IconMdiChevronUp from "~icons/mdi/chevron-up";
@@ -15,7 +17,8 @@
     content: MessageContent;
   }
 
-  let { content }: Props = $props();
+  const plugins: Plugin[] = [{ rehypePlugin: [rehypeRaw] }];
+  const { content }: Props = $props();
 
   let visible = $state(false);
   let scale = spring(0.8);
@@ -26,12 +29,7 @@
   let typingProgress = tweened(0, { duration: 200 });
 
   // 检测是否正在思考
-  let isThinking = $derived(!!content.progressId);
-
-  // 反转思考步骤，最新的在上方
-  let reversedProgressCtx = $derived(
-    content.progressCtx ? [...content.progressCtx].reverse() : [],
-  );
+  let isThinking = $derived(!!content.isProcessing);
 
   $effect(() => {
     visible = true;
@@ -51,14 +49,18 @@
       rotateAnimation();
 
       // 自动展开思考过程
-      progressExpanded = true;
+      // progressExpanded = true;
     }
   });
 
   // 打字机效果
   $effect(() => {
-    if (content.progressCtx && content.progressCtx.length > 0) {
-      typingProgress.set(content.progressCtx.length);
+    if (
+      content.isProcessing &&
+      content.processingSteps &&
+      content.processingSteps.length > 0
+    ) {
+      typingProgress.set(content.processingSteps.length);
     }
   });
 
@@ -81,10 +83,10 @@
     <div class="flex flex-col space-y-3">
       <!-- 主要内容 -->
       <div
-        class="rounded-2xl bg-muted/50 px-6 py-4 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-muted/70 border border-border/50"
+        class="rounded-2xl bg-muted/50 px-6 py-4 shadow-sm border border-border/50"
       >
         <div class="prose prose-sm dark:prose-invert max-w-none">
-          <Markdown md={content.content} />
+          <Markdown md={content.content} {plugins} />
         </div>
       </div>
 
@@ -109,7 +111,7 @@
       {/if}
 
       <!-- AI思考进度 -->
-      {#if content.progressId && content.progressCtx && content.progressCtx.length > 0}
+      {#if content.isProcessing && content.processingSteps && content.processingSteps.length > 0}
         <div
           in:slide={{ duration: 400, delay: 200 }}
           class="border border-primary/20 rounded-xl bg-primary/5 overflow-hidden {isThinking
@@ -147,7 +149,7 @@
               <span
                 class="text-xs text-muted-foreground {isThinking
                   ? 'animate-pulse'
-                  : ''}">({content.progressCtx.length} 步骤)</span
+                  : ''}">({content.processingSteps.length} 步骤)</span
               >
             </div>
             {#if progressExpanded}
@@ -195,9 +197,9 @@
               {/if}
 
               <!-- 思考步骤（最新的在上方，反转显示） -->
-              {#each reversedProgressCtx as step, reverseIndex}
+              {#each content.processingSteps as step, reverseIndex}
                 {@const originalIndex =
-                  content.progressCtx.length - 1 - reverseIndex}
+                  content.processingSteps.length - 1 - reverseIndex}
                 {@const isLatest = reverseIndex === 0}
                 <div
                   in:slide={{ duration: 200, delay: reverseIndex * 30 }}
@@ -241,7 +243,7 @@
                         ? 'animate-pulse'
                         : ''}"
                     >
-                      <Markdown md={step} />
+                      <Markdown md={step} {plugins} />
                       {#if isThinking && isLatest}
                         <!-- 打字机光标效果 -->
                         <span

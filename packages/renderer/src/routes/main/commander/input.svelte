@@ -10,10 +10,10 @@
   import NewTask from "./NewTask.svelte";
   import IconAdd from "~icons/mdi/plus";
   import { pipe, isEmpty, take } from "remeda";
+  import { chatStore } from "$lib/stores/chatStore";
 
   let {
     breadcrumbsLength = 0,
-    onSubmit = () => {},
     placeholder = "输入您的消息...",
     disabled = false,
   } = $props();
@@ -37,13 +37,23 @@
   );
   const isInputDisabled = $derived(disabled || !hasTask);
 
-  function handleSubmit() {
+  async function doSubmit(msg: string) {
+    await chatStore.addMessage(msg);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+
+  async function handleSubmit() {
     if (message.trim() && !isInputDisabled) {
-      onSubmit(message.trim());
+      disabled = true;
+      await doSubmit(message.trim());
+      disabled = false;
       message = "";
       isExpanded = false;
       isAtMaxHeight = false;
       animateToHeight(48);
+      setTimeout(() => {
+        inputElement.focus();
+      }, 100);
     }
   }
 
