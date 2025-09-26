@@ -91,8 +91,7 @@ export class AppContext implements IAppContext {
   // 发送事件到渲染进程
   emit(eventName: string, eventData: Record<string, any> = {}) {
     if (!this.win || this.win.isDestroyed()) {
-      console.warn('主窗口不可用，无法发送事件:', eventName);
-      return;
+      throw new Error(`主窗口不可用，无法发送事件:${eventName}`);
     }
 
     try {

@@ -6,6 +6,7 @@ export interface MessageContent {
         type: string;
         desc?: string;
     }[];
+    level?: string;  // warn, error, info.
     isProcessing?: boolean;
     processingSteps?: string[];
 }

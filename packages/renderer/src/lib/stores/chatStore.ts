@@ -5,8 +5,9 @@ import { currentTaskStore } from './shared.svelte'
 import { eventBus } from '$lib/utils/evtbus';
 import type { Events } from '$lib/utils/evtbus.type';
 
-const AiSayMsg = 'aimsg';
+const NewAiMsg = 'aimsg';
 const AiStepMsg = "aistep";
+const UpdateAiMsg = 'updmsg';
 
 export interface MessageContent {
     content: string;
@@ -82,6 +83,31 @@ function createChatStore() {
             totalCount: total < 0 ? messages.length : total
         })),
         /**
+         * 更新指定 id 消息的内容
+         * @param id 消息的唯一标识
+         * @param content 要更新的文本内容
+         * @param clear - true: 替换原内容；false: 在原内容后追加
+         */
+        updateMessage: (id: string, content: string, clear: boolean) =>
+            update((state) => ({
+                ...state,
+                messages: state.messages.map((msg) => {
+                    if (msg.id === id) {
+                        const msgContent = msg.content || { content: '' };
+                        return {
+                            ...msg,
+                            content: {
+                                ...msgContent,
+                                content: clear
+                                    ? content
+                                    : msgContent.content + content
+                            }
+                        };
+                    }
+                    return msg;
+                })
+            })),
+        /**
             * 更新指定 id 消息的处理状态
             * - 若 step 为空：设置 content.isProcessing = false
             * - 若 step 非空：设置 content.isProcessing = true，并将 step 插入 processingSteps 开头
@@ -93,7 +119,7 @@ function createChatStore() {
                     if (msg.id === id) {
                         const content = msg.content || { content: '' }; // 确保 content 存在
                         // console.log("old content=", content)
-                        const newMsg =  {
+                        const newMsg = {
                             ...msg,
                             content: {
                                 ...content,
@@ -133,4 +159,14 @@ eventBus.on(AiStepMsg, (evt: Events) => {
     // console.log("on AiStepMsg", evt)
     chatStore.step(evt.id as string, evt.step as string)
 })
+
+eventBus.on(NewAiMsg, (evt: Events) => {
+    chatStore.addMessage(evt.message as Message)
+})
+
+
+eventBus.on(UpdateAiMsg, (evt: Events) => {
+    chatStore.updateMessage(evt.id as string, evt.content as string, !!evt.clear)
+})
+
 
