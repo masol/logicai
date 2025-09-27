@@ -23,28 +23,28 @@ function get(app: IAppContext) {
 }
 
 function current(app: IAppContext,) {
-    return pickTask(app.task.current);
+    return pickTask(app.tasks.current);
 }
 
 async function userInput(app: IAppContext, userMsg: Message): Promise<Message> {
-    return await app.task.onUserInput(userMsg);
+    return await app.tasks.onUserInput(userMsg);
 }
 
 
 async function create(app: IAppContext, name: string) {
-    return pickTask(await app.task.create(name));
+    return pickTask(await app.tasks.create(name));
 }
 
 
 async function active(app: IAppContext, id: string) {
     console.log("enter active!!!")
-    return await app.task.setActiveTask(id)
+    return await app.tasks.setActiveTask(id)
 }
 
 
 // 加载历史记录。
 async function history(app: IAppContext) {
-    const current = app.task.current
+    const current = app.tasks.current
     // console.log("history current=", current)
     if (current && current.id) {
         const result = await app.history.loadRecentMessages(current.id);

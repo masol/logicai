@@ -27,10 +27,12 @@
     "init": "npm run create-renderer && npm run integrate-renderer && npm install"
   },
   "devDependencies": {
+    "@app/main": "^0.0.1",
     "@npmcli/map-workspaces": "4.0.2",
     "@playwright/test": "1.53.1",
     "@sveltejs/vite-plugin-svelte": "^5.1.0",
     "@types/node": "24.0.3",
+    "@types/validator": "^13.15.3",
     "electron": "36.5.0",
     "electron-builder": "26.0.12",
     "glob": "11.0.3",
@@ -40,6 +42,7 @@
     "@iconify-json/lucide": "^1.2.66",
     "app-builder-bin": "^5.0.0-alpha.12",
     "remeda": "^2.23.2",
+    "validator": "^13.15.15",
     "wait-on": "^8.0.3"
   },
   "license": "MIT"

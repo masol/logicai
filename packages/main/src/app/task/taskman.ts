@@ -1,5 +1,5 @@
 import type { IAppContext } from "../context.type.js"
-import type { AiTask, ITask, TaskContext, ITaskMan } from "./index.type.js"
+import type { AiTask, ITask, ExecutionContext, ITaskMan } from "./index.type.js"
 import { getSetting, setSetting } from "../../api/sys.js";
 import { Task } from "./task.js";
 import { pick } from "remeda";
@@ -22,11 +22,11 @@ function cvt2Aitask(task: ITask): AiTask {
 export class TaskMan implements ITaskMan {
     private app: IAppContext;
     #current: Task | null = null;
-    public readonly asyncStore: AsyncLocalStorage<TaskContext>;
+    public readonly asyncStore: AsyncLocalStorage<ExecutionContext>;
 
     constructor(app: IAppContext) {
         this.app = app;
-        this.asyncStore = new AsyncLocalStorage<TaskContext>()
+        this.asyncStore = new AsyncLocalStorage<ExecutionContext>()
     }
 
     private updateCurrent(aiTask: AiTask) {
@@ -41,7 +41,7 @@ export class TaskMan implements ITaskMan {
     }
 
     reanchorContext(fn: () => Promise<void>): void {
-        const context: TaskContext = this.taskCtx;
+        const context: ExecutionContext = this.executionContext;
         this.asyncStore.exit(() => {
             setImmediate(async () => {
                 await this.asyncStore.run(context, fn);
@@ -49,42 +49,42 @@ export class TaskMan implements ITaskMan {
         });
     }
 
-    runInContext(context:TaskContext, fn: () => Promise<any>): Promise<any> {
+    runInContext(context:ExecutionContext, fn: () => Promise<any>): Promise<any> {
         return this.asyncStore.run(context, fn);
     }
 
-    get taskCtx(): TaskContext {
-        const taskCtx = this.asyncStore.getStore();
-        if (!taskCtx) {
+    get executionContext(): ExecutionContext {
+        const executionContext = this.asyncStore.getStore();
+        if (!executionContext) {
             throw new Error("无法获取任务堆栈上下文，有异步脱离上下文后访问此函数了?");
         }
-        return taskCtx;
+        return executionContext;
     }
 
     createResponse(content: string, type: string = "ai"): Message {
-        const taskCtx = this.taskCtx;
+        const executionContext = this.executionContext;
         return {
             id: crypto.randomUUID(),
             content: {
                 content,
             },
-            taskId: taskCtx.input.taskId,
+            taskId: executionContext.input.taskId,
             type,
             timestamp: Date.now()
         }
     }
 
     reportProgress(stepMsg: string) {
-        const taskCtx: TaskContext = this.taskCtx;
-        this.app.emit(AiStepMsg, { id: taskCtx.input.id, step: stepMsg });
+        const executionContext: ExecutionContext = this.executionContext;
+        this.app.emit(AiStepMsg, { id: executionContext.input.id, step: stepMsg });
     }
 
     aiUpdate(response: string, clear = false): void {
-        const taskCtx = this.taskCtx;
-        if (!taskCtx.output) {
+        const executionContext = this.executionContext;
+        if (!executionContext.output) {
             throw new Error("调用aiUpdate,但是ai回应尚未发送");
         }
-        this.app.emit(UpdateAiMsg, { id: taskCtx.output.id, content: response, clear });
+        this.app.emit(UpdateAiMsg, { id: executionContext.output.id, content: response, clear });
     }
 
     aiNotify(response: Message | string): void {
@@ -118,7 +118,7 @@ export class TaskMan implements ITaskMan {
                 timestamp: Date.now()
             }
 
-            this.taskCtx.output = retMsg;
+            this.executionContext.output = retMsg;
             setImmediate(async () => {
                 for (let i = 0; i < 10; i++) {
                     await new Promise((resolve) => setTimeout(resolve, 2000));

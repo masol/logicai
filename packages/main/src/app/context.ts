@@ -5,7 +5,7 @@ import { IAppContext } from "./context.type.js";
 import { TaskMan } from "./task/taskman.js";
 import { getSetting } from "../api/sys.js";
 import { LLMManager } from './llms/manager.js'
-import { MachineFactory } from "./fsm/factory.js";
+import { FlowFactory } from "./flow/factory.js";
 
 export class AppContext implements IAppContext {
   #initstate = {
@@ -17,9 +17,10 @@ export class AppContext implements IAppContext {
   readonly win: Electron.BrowserWindow;
   readonly db: LokiDatabase;
   readonly history: History;
-  readonly task: TaskMan;
+  readonly tasks: TaskMan;
   readonly llms: LLMManager;
-  readonly machineFactory: MachineFactory;
+  readonly flowFactory: FlowFactory;
+  readonly baseDir: string;
 
   passive: boolean = true;
 
@@ -28,8 +29,8 @@ export class AppContext implements IAppContext {
   constructor(app: Electron.App, win: Electron.BrowserWindow) {
     this.app = app;
     this.win = win;
-    const userData = app.getPath("userData");
-    const dbPath = path.join(userData, "store", "data.json");
+    this.baseDir = app.getPath("userData");
+    const dbPath = path.join(this.baseDir, "store", "data.json");
     // console.log("dbPath=", dbPath);
     const that = this;
     this.llms = new LLMManager();
@@ -37,7 +38,7 @@ export class AppContext implements IAppContext {
       { dbPath },
       () => {
         this.passive = !!getSetting(this, "passive");
-        this.task.loadCurrent();
+        this.tasks.loadCurrent();
 
         //加载和初始化llm集合
         const allModels = getSetting(this, "models") ?? { llm: [] };
@@ -51,7 +52,7 @@ export class AppContext implements IAppContext {
         this.onInitStep("db");
       }
     );
-    this.history = new History(path.join(userData, "store", "history.sqlite"), (error) => {
+    this.history = new History(path.join(this.baseDir, "store", "history.sqlite"), (error) => {
       if (error) {
         that.emit("ERROR", { message: "历史数据库初始化错误" })
       } else {
@@ -59,8 +60,8 @@ export class AppContext implements IAppContext {
       }
     })
 
-    this.machineFactory = new MachineFactory(this);
-    this.task = new TaskMan(this);
+    this.flowFactory = new FlowFactory(this);
+    this.tasks = new TaskMan(this);
   }
 
   get inited(): boolean {

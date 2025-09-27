@@ -2,7 +2,7 @@ import { type LokiDatabase } from "./loki.js";
 import { type History } from "./history.js";
 import { type ITaskMan } from "./task/index.type.js";
 import type { ILLMManager } from './llms/index.type.js'
-import type { IMachineFactory } from "./fsm/index.type.js";
+import type { IFlowFactory } from "./flow/index.type.js";
 
 export interface IAppContext {
     /**
@@ -14,6 +14,11 @@ export interface IAppContext {
      * Electron 主窗口实例（只读）
      */
     readonly win: Electron.BrowserWindow;
+
+    /**
+     * 配置目录。
+     */
+    readonly baseDir: string;
 
     /**
      * 主数据库实例（只读）
@@ -30,13 +35,13 @@ export interface IAppContext {
     /**
      * 任务管理器.
      */
-    readonly task: ITaskMan;
+    readonly tasks: ITaskMan;
 
 
     /**
      * fsm machine加载器.(算法加载器)
      */
-    readonly machineFactory: IMachineFactory;
+    readonly flowFactory: IFlowFactory;
 
     /**
      * 获取初始化状态
@@ -55,5 +60,4 @@ export interface IAppContext {
 
     //获取指定任务的目录。id为任务id.
     taskDir(id: string): string;
-
 }
