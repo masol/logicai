@@ -23,35 +23,11 @@ export class LLMManager {
 
     constructor() { }
 
-    private parseModelName(model?: string): string {
-        if (!model) {
-            return '';
-        }
-
-        const parts = model.split('::');
-        if (parts.length > 1) {
-            return parts.slice(1).join('::');
-        }
-
-        return model;
-    }
-
-    /**
-     * 预处理配置，确保name字段被正确解析
-     */
-    private prepareConfig(config: LLMConfig): LLMConfig {
-        const processedConfig = { ...config };
-        if (processedConfig.name) {
-            processedConfig.name = this.parseModelName(processedConfig.name);
-        }
-        return processedConfig;
-    }
-
     /**
      * 创建实例状态
      */
     private createInstanceState(config: LLMConfig): InstanceState {
-        const processedConfig = this.prepareConfig(config);
+        const processedConfig = { ...config };
         const wrapper = new LLMWrapper(processedConfig);
 
         return {
@@ -75,11 +51,15 @@ export class LLMManager {
         let successCount = 0;
 
         for (const config of configs) {
+            if (!config.enabled) {
+                console.error(`${config.name}被禁用，忽略之。`);
+                continue;
+            }
             try {
                 const instanceState = this.createInstanceState(config);
                 this.instances.set(config.id, instanceState);
                 successCount++;
-                console.log(`成功初始化实例: ${instanceState.config.name}`);
+                console.log(`成功初始化${instanceState.config.provider}实例: ${instanceState.config.name}`);
             } catch (error) {
                 console.error(`初始化实例失败: ${config.name}`, error);
             }

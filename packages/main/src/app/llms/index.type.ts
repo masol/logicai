@@ -6,6 +6,7 @@ export interface LLMConfig {
     name: string;
     provider: 'DeepSeek' | 'OpenAI' | 'Groq' | 'Moonshot' | 'Baichuan' | 'Zhipu' | 'OpenRouter';
     apiKey: string;
+    enabled: boolean;
 }
 
 // 调用结果接口

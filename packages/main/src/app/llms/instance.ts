@@ -18,7 +18,7 @@ const PROVIDER_CONFIG = {
     },
     Groq: {
         baseURL: 'https://api.groq.com/openai/v1',
-        defaultModel: 'llama3-8b-8192'
+        defaultModel: 'llama-3.1-8b-instant'
     },
     Moonshot: {
         baseURL: 'https://api.moonshot.cn/v1',
@@ -34,7 +34,7 @@ const PROVIDER_CONFIG = {
     },
     OpenRouter: {
         baseURL: 'https://openrouter.ai/api/v1',
-        defaultModel: 'meta-llama/llama-3.1-8b-instruct:free'
+        defaultModel: 'qwen/qwen3-coder:free'
     }
 } as const;
 
@@ -64,8 +64,8 @@ export class LLMWrapper {
             throw new Error(`不支持的提供商: ${this.config.provider}`);
         }
 
-        const baseURL = this.options?.baseURL || providerConfig.baseURL;
-        const model = this.options?.model || providerConfig.defaultModel;
+        const baseURL = (this.options?.baseURL || providerConfig.baseURL).trim();
+        const model = (this.config.name || this.options?.model || providerConfig.defaultModel).trim();
 
         const commonOptions: { model: string, [key: string]: any } = {
             model,
@@ -85,7 +85,6 @@ export class LLMWrapper {
                     ...commonOptions,
                     apiKey: this.config.apiKey
                 });
-
             case 'DeepSeek':
             case 'OpenAI':
             case 'Moonshot':
@@ -93,6 +92,7 @@ export class LLMWrapper {
             case 'Zhipu':
             case 'OpenRouter':
                 return new ChatOpenAI({
+                    apiKey: this.config.apiKey,
                     openAIApiKey: this.config.apiKey,
                     ...commonOptions,
                     configuration: {
@@ -212,6 +212,7 @@ export class LLMWrapper {
 
             try {
                 const fixPrompt = this.createJSONFixPrompt(response);
+                console.log("fixJSONPrompt=", fixPrompt)
                 const fixResult = await this.call(fixPrompt);
 
                 // 如果修复调用失败，继续下一次尝试
@@ -253,7 +254,7 @@ export class LLMWrapper {
         const formatInstructions = this.jsonParser.getFormatInstructions();
 
         const template = `
-以下内容应该是JSON格式，但解析失败了：
+以下内容是JSON格式，但因为语法错误，解析失败了：
 
 <%= invalidResponse %>
 

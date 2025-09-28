@@ -21,6 +21,7 @@ export class FlowFactory implements IFlowFactory {
         } else if (id === "plan") {
             const flow = new Flow(this.app);
             flow.setActions(Plan.actions);
+            flow.setWorkflow(Plan.flowDef);
             return flow;
         } else {
             throw new Error(`Unsupported id: ${id}`);

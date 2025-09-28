@@ -1,190 +1,211 @@
-import type { IAppContext } from "../context.type.js"
-import type { AiTask, ITask, ExecutionContext, ITaskMan } from "./index.type.js"
+import type { IAppContext } from "../context.type.js";
+import type {
+  AiTask,
+  ITask,
+  ExecutionContext,
+  ITaskMan,
+} from "./index.type.js";
 import { getSetting, setSetting } from "../../api/sys.js";
 import { Task } from "./task.js";
 import { pick } from "remeda";
 import type { Message, MessageContent } from "../history.type.js";
-import { AsyncLocalStorage } from 'node:async_hooks';
+import { AsyncLocalStorage } from "node:async_hooks";
 
-export const CollectName = "tasks"
+export const CollectName = "tasks";
 
 const settingKey = "currentTask";
-const NewAiMsg = 'aimsg';
-const UpdateAiMsg = 'updmsg';
+const NewAiMsg = "aimsg";
+const UpdateAiMsg = "updmsg";
 const AiStepMsg = "aistep";
 
-const NOCurrentTaskMsg = "没有任务被激活，请在输入框下方中间位置，新建或选择任务后继续。"
+const NOCurrentTaskMsg =
+  "没有任务被激活，请在输入框下方中间位置，新建或选择任务后继续。";
 
 function cvt2Aitask(task: ITask): AiTask {
-    return pick(task, ['id', 'name', 'time']) as AiTask
+  return pick(task, ["id", "name", "time"]) as AiTask;
 }
 
 export class TaskMan implements ITaskMan {
-    private app: IAppContext;
-    #current: Task | null = null;
-    public readonly asyncStore: AsyncLocalStorage<ExecutionContext>;
+  private app: IAppContext;
+  #current: Task | null = null;
+  public readonly asyncStore: AsyncLocalStorage<ExecutionContext>;
 
-    constructor(app: IAppContext) {
-        this.app = app;
-        this.asyncStore = new AsyncLocalStorage<ExecutionContext>()
+  constructor(app: IAppContext) {
+    this.app = app;
+    this.asyncStore = new AsyncLocalStorage<ExecutionContext>();
+  }
+
+  private updateCurrent(aiTask: AiTask) {
+    setSetting(this.app, settingKey, aiTask);
+  }
+
+  get current(): ITask {
+    if (!this.#current) {
+      throw new Error(NOCurrentTaskMsg);
     }
+    return this.#current;
+  }
 
-    private updateCurrent(aiTask: AiTask) {
-        setSetting(this.app, settingKey, aiTask);
+  reanchorContext(fn: () => Promise<void>): void {
+    const context: ExecutionContext = this.executionContext;
+    this.asyncStore.exit(() => {
+      setImmediate(async () => {
+        await this.asyncStore.run(context, fn);
+      });
+    });
+  }
+
+  private runInContext(
+    context: ExecutionContext,
+    fn: () => Promise<any>
+  ): Promise<any> {
+    return this.asyncStore.run(context, fn);
+  }
+
+  get executionContext(): ExecutionContext {
+    const executionContext = this.asyncStore.getStore();
+    if (!executionContext) {
+      throw new Error(
+        "无法获取任务堆栈上下文，有异步脱离上下文后访问此函数了?"
+      );
     }
+    return executionContext;
+  }
 
-    get current(): ITask {
+  createResponse(content: string, type: string = "ai"): Message {
+    const executionContext = this.executionContext;
+    return {
+      id: crypto.randomUUID(),
+      content: {
+        content,
+      },
+      taskId: executionContext.input.taskId,
+      type,
+      timestamp: Date.now(),
+    };
+  }
+
+  reportProgress(stepMsg: string) {
+    const executionContext: ExecutionContext = this.executionContext;
+    if (!executionContext.output) {
+      throw new Error("调用reportProgress,但是ai回应尚未发送");
+    }
+    this.app.emit(AiStepMsg, { id: executionContext.output.id, step: stepMsg });
+  }
+
+  aiUpdate(response: string, clear = false): void {
+    const executionContext = this.executionContext;
+    if (!executionContext.output) {
+      throw new Error("调用aiUpdate,但是ai回应尚未发送");
+    }
+    this.app.emit(UpdateAiMsg, {
+      id: executionContext.output.id,
+      content: response,
+      clear,
+    });
+  }
+
+  aiNotify(response: Message | string): void {
+    const message: Message =
+      typeof response === "string" ? this.createResponse(response) : response;
+    this.app.emit(NewAiMsg, { message });
+  }
+
+  async onUserInput(msg: Message): Promise<Message> {
+    const result: Message = await this.runInContext(
+      { input: msg, task: this.current },
+      async () => {
+        await this.app.history.addMessage(msg);
+
         if (!this.#current) {
-            throw new Error(NOCurrentTaskMsg)
+          const retMsg = this.createResponse(NOCurrentTaskMsg);
+          retMsg.content.level = "error";
+          return retMsg;
         }
-        return this.#current;
-    }
 
-    reanchorContext(fn: () => Promise<void>): void {
-        const context: ExecutionContext = this.executionContext;
-        this.asyncStore.exit(() => {
-            setImmediate(async () => {
-                await this.asyncStore.run(context, fn);
-            });
-        });
-    }
+        // 创建用户输出。
+        const exeCtx = this.executionContext;
+        exeCtx.output = this.createResponse("请等待AI回应...");
 
-    runInContext(context:ExecutionContext, fn: () => Promise<any>): Promise<any> {
-        return this.asyncStore.run(context, fn);
-    }
+        exeCtx.output.content.isProcessing = true;
+        exeCtx.output.content.processingSteps = [];
 
-    get executionContext(): ExecutionContext {
-        const executionContext = this.asyncStore.getStore();
-        if (!executionContext) {
-            throw new Error("无法获取任务堆栈上下文，有异步脱离上下文后访问此函数了?");
+        if (!this.current.runFlow()) {
+          exeCtx.output.content = {
+            content: "无法自举默认应对流程。",
+          };
+          return exeCtx;
         }
-        return executionContext;
-    }
 
-    createResponse(content: string, type: string = "ai"): Message {
-        const executionContext = this.executionContext;
-        return {
-            id: crypto.randomUUID(),
-            content: {
-                content,
-            },
-            taskId: executionContext.input.taskId,
-            type,
-            timestamp: Date.now()
-        }
-    }
-
-    reportProgress(stepMsg: string) {
-        const executionContext: ExecutionContext = this.executionContext;
-        this.app.emit(AiStepMsg, { id: executionContext.input.id, step: stepMsg });
-    }
-
-    aiUpdate(response: string, clear = false): void {
-        const executionContext = this.executionContext;
-        if (!executionContext.output) {
-            throw new Error("调用aiUpdate,但是ai回应尚未发送");
-        }
-        this.app.emit(UpdateAiMsg, { id: executionContext.output.id, content: response, clear });
-    }
-
-    aiNotify(response: Message | string): void {
-        const message: Message = (typeof response === "string") ? this.createResponse(response) : response;
-        this.app.emit(NewAiMsg, { message });
-    }
-
-    async onUserInput(msg: Message): Promise<Message> {
-
-        const result: Message = await this.runInContext({ input: msg, task: this.current }, async () => {
-            await this.app.history.addMessage(msg)
-
-            if (!this.#current) {
-                const retMsg = this.createResponse(NOCurrentTaskMsg);
-                retMsg.content.level = "error";
-                return retMsg;
+        exeCtx.onFinish = async (name: string, left: number) => {
+          if (left <= 0) {
+            //没有更多flow排队中，通知UI任务结束。
+            this.reportProgress("");
+            if (exeCtx.output) {
+              delete exeCtx.output.content.isProcessing;
+              delete exeCtx.output.content.processingSteps;
+              await this.app.history.addMessage(exeCtx.output);
             }
+          }
+          console.log(`flow ${name} finished...`);
+        };
 
+        return exeCtx.output;
+      }
+    );
 
-            const testContent: MessageContent = {
-                content: "12322",
-                isProcessing: true,
-                processingSteps: ["test123"]
-            };
+    return result;
+  }
 
-            const retMsg = {
-                id: crypto.randomUUID(),
-                type: 'ai',
-                taskId: msg.taskId,
-                content: testContent,
-                timestamp: Date.now()
-            }
-
-            this.executionContext.output = retMsg;
-            setImmediate(async () => {
-                for (let i = 0; i < 10; i++) {
-                    await new Promise((resolve) => setTimeout(resolve, 2000));
-                    testContent.processingSteps!.unshift(`do step ${i}`);
-                    this.app.emit(AiStepMsg, { id: retMsg.id, step: `do step ${i}` })
-                    this.aiUpdate("\n\n test 1", i === 5)
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
-                }
-                this.app.emit(AiStepMsg, { id: retMsg.id, step: '' })
-                testContent.isProcessing = false;
-                delete testContent.processingSteps;
-                await this.app.history.addMessage(retMsg)
-            })
-            return retMsg;
-        })
-
-        return result;
+  async create(name: string): Promise<ITask> {
+    const task: Task | null = await this.loadTask({
+      id: crypto.randomUUID(),
+      name,
+      time: new Date().toISOString(),
+    });
+    if (!task) {
+      throw new Error("can not create task!");
     }
+    const coll = this.app.db.collection<AiTask>(CollectName);
+    const aiTask = cvt2Aitask(task);
+    coll.insert(aiTask);
+    this.updateCurrent(aiTask);
+    this.#current = task;
+    return task;
+  }
 
-    async create(name: string): Promise<ITask> {
-        const task: Task | null = await this.loadTask({
-            id: crypto.randomUUID(),
-            name,
-            time: (new Date()).toISOString()
-        });
-        if (!task) {
-            throw new Error("can not create task!")
-        }
-        const coll = this.app.db.collection<AiTask>(CollectName);
-        const aiTask = cvt2Aitask(task);
-        coll.insert(aiTask);
-        this.updateCurrent(aiTask);
-        this.#current = task;
-        return task;
+  private async loadTask(aiTask: AiTask): Promise<Task | null> {
+    if (aiTask?.id !== this.#current?.id) {
+      const task = await Task.create(this.app, aiTask);
+      return task;
     }
+    return null;
+  }
 
-    private async loadTask(aiTask: AiTask): Promise<Task | null> {
-        if (aiTask?.id !== this.#current?.id) {
-            const task = await Task.create(this.app, aiTask);
-            return task;
-        }
-        return null;
-    }
+  async loadCurrent(): Promise<ITask | null> {
+    const currentTask = getSetting(this.app, settingKey);
+    this.#current = await this.loadTask(currentTask);
+    // console.log("current task =", currentTask)
+    return this.#current;
+  }
 
-    async loadCurrent(): Promise<ITask | null> {
-        const currentTask = getSetting(this.app, settingKey);
-        this.#current = await this.loadTask(currentTask);
-        // console.log("current task =", currentTask)
-        return this.#current;
-    }
-
-
-    async setActiveTask(id: string, doUpdateCurrent: boolean = true): Promise<boolean> {
-        console.log("enter setActiveTask=", id, doUpdateCurrent)
-        if (id !== this.#current?.id) {
-            const coll = this.app.db.collection(CollectName);
-            const aiTask: AiTask = coll.findOne({ id });
-            if (aiTask) {
-                this.#current = await this.loadTask(aiTask);
-                if (doUpdateCurrent) {
-                    this.updateCurrent(aiTask);
-                }
-                return true;
-            }
-            return false;
+  async setActiveTask(
+    id: string,
+    doUpdateCurrent: boolean = true
+  ): Promise<boolean> {
+    console.log("enter setActiveTask=", id, doUpdateCurrent);
+    if (id !== this.#current?.id) {
+      const coll = this.app.db.collection(CollectName);
+      const aiTask: AiTask = coll.findOne({ id });
+      if (aiTask) {
+        this.#current = await this.loadTask(aiTask);
+        if (doUpdateCurrent) {
+          this.updateCurrent(aiTask);
         }
         return true;
+      }
+      return false;
     }
+    return true;
+  }
 }

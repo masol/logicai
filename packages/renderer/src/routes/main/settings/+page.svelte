@@ -54,6 +54,7 @@
   let showAddModal = $state(false);
   let newModel = $state({
     name: "",
+    provider: "",
     apiKey: "",
     showApiKey: false,
   });
@@ -172,18 +173,20 @@
   }
 
   function onModelSelect() {
-    const preset = presetModels[newModel.name];
+    const preset = presetModels[newModel.provider];
     if (preset) {
+      // newModel.
       // 自动填充信息，但保留API key为空
+      newModel.name = presetModels[newModel.provider].model || "";
       newModel.apiKey = "";
       newModel.showApiKey = false;
     }
   }
 
   function addModel() {
-    if (!newModel.name || !newModel.apiKey) return;
+    if (!newModel.name || !newModel.apiKey || !newModel.provider) return;
 
-    const preset = presetModels[newModel.name];
+    const preset = presetModels[newModel.provider];
     if (!preset) return;
 
     const id = crypto.randomUUID();
@@ -198,11 +201,12 @@
     models[category].push({
       id,
       name: newModel.name,
-      provider: preset.provider,
+      provider: newModel.provider,
       apiKey: newModel.apiKey,
       enabled: true,
     });
 
+    console.log("save models=", models);
     // 保存模型配置
     saveModels(models);
 
@@ -211,7 +215,7 @@
     expandedCategories = new Set(expandedCategories);
 
     // 重置表单
-    newModel = { name: "", apiKey: "", showApiKey: false };
+    newModel = { provider: "", name: "", apiKey: "", showApiKey: false };
     showAddModal = false;
   }
 
@@ -381,8 +385,8 @@
   }
 
   // 检查模型是否不支持嵌入
-  function hasNoEmbedding(modelName) {
-    const preset = presetModels[modelName];
+  function hasNoEmbedding(provider: string) {
+    const preset = presetModels[provider];
     return preset && preset.noEmbed;
   }
 </script>
@@ -523,7 +527,7 @@
                                 ? 'text-gray-900 dark:text-white'
                                 : 'text-gray-400 dark:text-gray-500'}"
                             >
-                              {model.name}
+                              {model.provider || ""}::{model.name}
                               {#if hasNoEmbedding(model.name)}
                                 <span
                                   class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1 rounded"
@@ -873,7 +877,7 @@
                         <IconPowerOff class="w-5 h-5 text-gray-400" />
                         <span class="text-sm text-gray-500">已禁用</span>
                       {/if}
-                      {#if hasNoEmbedding(model.name)}
+                      {#if hasNoEmbedding(model.provider)}
                         <span
                           class="text-sm bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-1 rounded"
                         >
@@ -882,7 +886,7 @@
                       {/if}
                     </h3>
                     <p class="text-gray-600 dark:text-gray-400">
-                      {model.provider}
+                      {presetModels[model.provider]?.showName || model.provider}
                     </p>
                   </div>
                   <div class="flex gap-3">
@@ -1136,34 +1140,36 @@
               for="model-select"
               class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              选择模型
+              选择提供商
             </label>
             <select
               id="model-select"
-              bind:value={newModel.name}
+              bind:value={newModel.provider}
               onchange={onModelSelect}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             >
-              <option value="">请选择模型</option>
-              {#each Object.keys(presetModels) as modelName}
-                <option value={modelName}
-                  >{presetModels[modelName].provider}::{modelName}</option
+              <option value="">请选择提供商</option>
+              {#each Object.keys(presetModels) as providerName}
+                <option value={providerName}
+                  >{presetModels[providerName].showName || providerName}</option
                 >
               {/each}
             </select>
           </div>
 
-          {#if newModel.name && presetModels[newModel.name]}
+          {#if newModel.provider && presetModels[newModel.provider]}
             <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <div class="text-sm">
                 <div class="font-medium text-gray-900 dark:text-white">
-                  提供商: {presetModels[newModel.name].provider}
+                  提供商: {presetModels[newModel.provider].showName ||
+                    newModel.provider}
                 </div>
                 <div class="text-gray-600 dark:text-gray-400">
-                  类型: {modelCategories[presetModels[newModel.name].category]
-                    .name}
+                  类型: {modelCategories[
+                    presetModels[newModel.provider].category
+                  ].name}
                 </div>
-                {#if hasNoEmbedding(newModel.name)}
+                {#if hasNoEmbedding(newModel.provider)}
                   <div
                     class="text-orange-600 dark:text-orange-400 flex items-center gap-1 mt-1"
                   >
@@ -1177,7 +1183,22 @@
             </div>
           {/if}
 
-          {#if newModel.name}
+          {#if newModel.provider}
+            <div>
+              <label
+                for="model-name-input"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                模型名称
+              </label>
+              <input
+                id="model-name-input"
+                type="text"
+                bind:value={newModel.name}
+                placeholder="请输入模型名称"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
             <!-- API Key -->
             <div>
               <label
@@ -1218,7 +1239,7 @@
           </button>
           <button
             onclick={addModel}
-            disabled={!newModel.name || !newModel.apiKey}
+            disabled={!newModel.name || !newModel.provider || !newModel.apiKey}
             class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           >
             添加

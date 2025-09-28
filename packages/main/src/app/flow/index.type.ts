@@ -8,6 +8,7 @@ import type { ExecutionContext } from "../task/index.type.js";
 export const WORKFLOW_EXIT_ALL = -1;   // 退出所有层
 export const WORKFLOW_RETURN = -2;     // 退出当前层
 
+
 /**
  * 类型别名
  */
@@ -78,7 +79,7 @@ export interface ParallelTask extends BaseTask {
 }
 
 
-export type WorkflowTask = Task | ParallelTask;
+export type WorkflowTask = Task | ParallelTask | string;
 
 /**
  * 工作流定义

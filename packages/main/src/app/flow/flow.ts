@@ -1,26 +1,23 @@
-import pMap from 'p-map';
-import fs from 'fs/promises';
-import path from 'path';
-import serialize from 'serialize-javascript';
+import pMap from "p-map";
+import fs from "fs/promises";
+import path from "path";
+import serialize from "serialize-javascript";
 import type {
     ActionEntry,
     FunctionResult,
     ParallelTask,
     WorkflowDefinition,
     WorkflowTask,
-    IFlow
-} from './index.type.js';
+    IFlow,
+} from "./index.type.js";
 
-import {
-    WORKFLOW_EXIT_ALL,
-    WORKFLOW_RETURN,
-} from './index.type.js';
+import { WORKFLOW_EXIT_ALL, WORKFLOW_RETURN } from "./index.type.js";
 
-import type { ExecutionContext } from '../task/index.type.js';
-import type { IAppContext } from '../context.type.js';
+import type { ExecutionContext } from "../task/index.type.js";
+import type { IAppContext } from "../context.type.js";
 
-const NEXT_ACTION = '_next';
-const EXIT_ACTION = '_exit';
+const NEXT_ACTION = "_next";
+const EXIT_ACTION = "_exit";
 
 function isExitingAll(context: ExecutionContext): boolean {
     return !!context.isExitingAll;
@@ -35,18 +32,10 @@ interface PersistFlow {
     flowDef: WorkflowDefinition;
 }
 
-type ActiveFlowInfo = {
-    p: Promise<void>;
-    ec: ExecutionContext;
-}
-
 export class Flow implements IFlow {
     private actions: Map<string, ActionEntry> = new Map();
     private flowDef: WorkflowDefinition | null = null;
     private app: IAppContext;
-    // 活动任务注册表（外部可访问),每个异步链有id,对应的值是异步链的executionContext和它的Promise.
-    // 通过设置ec.isExitingAll = true来终止任务。
-    private activeFlows: Map<string, ActiveFlowInfo> = new Map();
     #dirty: boolean = false;
 
     /**
@@ -65,7 +54,9 @@ export class Flow implements IFlow {
     private get executionContext(): ExecutionContext {
         const exeContext = this.app.tasks.asyncStore.getStore();
         if (!exeContext) {
-            throw new Error('[Flow] No ExecutionContext available. Use asyncStore.run() to wrap execution.');
+            throw new Error(
+                "[Flow] No ExecutionContext available. Use asyncStore.run() to wrap execution."
+            );
         }
         return exeContext;
     }
@@ -75,7 +66,10 @@ export class Flow implements IFlow {
     /**
      * 设置所有 actions
      */
-    setActions(actions: Record<string, ActionEntry>, clear: Boolean = false): this {
+    setActions(
+        actions: Record<string, ActionEntry>,
+        clear: Boolean = false
+    ): this {
         if (clear) {
             this.actions.clear();
         }
@@ -85,6 +79,7 @@ export class Flow implements IFlow {
         this.setDirty(true);
         return this;
     }
+
     /**
      * 注册 Action
      */
@@ -99,7 +94,9 @@ export class Flow implements IFlow {
      */
     setWorkflow(flowDef: WorkflowDefinition): this {
         if (!flowDef || !flowDef.id || !Array.isArray(flowDef.tasks)) {
-            throw new Error('[Flow] Invalid WorkflowDefinition: missing id or tasks.');
+            throw new Error(
+                "[Flow] Invalid WorkflowDefinition: missing id or tasks."
+            );
         }
         this.flowDef = flowDef;
         this.setDirty(true);
@@ -135,7 +132,7 @@ export class Flow implements IFlow {
      */
     async loadFromFile(filePath: string): Promise<this> {
         try {
-            const content = await fs.readFile(filePath, 'utf-8');
+            const content = await fs.readFile(filePath, "utf-8");
             const serializedData: PersistFlow = eval(`(${content})`); // deserialize
 
             // 还原 actions 为 Map
@@ -150,7 +147,9 @@ export class Flow implements IFlow {
             console.log(`[Flow] Loaded from ${filePath}`);
             return this;
         } catch (error: any) {
-            throw new Error(`[Flow] Failed to load from ${filePath}: ${error.message}`);
+            throw new Error(
+                `[Flow] Failed to load from ${filePath}: ${error.message}`
+            );
         }
     }
 
@@ -167,7 +166,7 @@ export class Flow implements IFlow {
         };
 
         const serialized = serialize(state, { unsafe: true }); // 允许函数
-        await fs.writeFile(filePath, serialized, 'utf-8');
+        await fs.writeFile(filePath, serialized, "utf-8");
 
         this.#dirty = false;
         console.log(`[Flow] Saved to ${filePath}`);
@@ -179,7 +178,7 @@ export class Flow implements IFlow {
     private async executeTask(taskId: string): Promise<string | null> {
         const executionContext = this.executionContext;
         const action = this.actions.get(taskId);
-        if (!action || action.type !== 'function') {
+        if (!action || action.type !== "function") {
             return NEXT_ACTION;
         }
 
@@ -192,7 +191,7 @@ export class Flow implements IFlow {
             return NEXT_ACTION;
         }
 
-        if (typeof result === 'number') {
+        if (typeof result === "number") {
             if (result === WORKFLOW_EXIT_ALL) {
                 setExitingAll(executionContext);
                 return EXIT_ACTION;
@@ -207,20 +206,30 @@ export class Flow implements IFlow {
             return NEXT_ACTION;
         }
 
-        if (typeof result === 'string') {
+        if (typeof result === "string") {
             return result;
         }
 
-        if (Array.isArray(result) && result.length > 0 && 'id' in result[0] && 'type' in result[0]) {
+        if (
+            Array.isArray(result) &&
+            result.length > 0 &&
+            "id" in result[0] &&
+            "type" in result[0]
+        ) {
             await this.executeTaskList(result as WorkflowTask[]);
             if (isExitingAll(executionContext)) return EXIT_ACTION;
             return NEXT_ACTION;
         }
 
-        if (typeof result === 'object' && result !== null && 'id' in result && 'tasks' in result) {
+        if (
+            typeof result === "object" &&
+            result !== null &&
+            "id" in result &&
+            "tasks" in result
+        ) {
             const subFlow = new Flow(this.app);
             subFlow.actions = this.actions; // 共享 actions
-            subFlow.flowDef = (result as WorkflowDefinition)
+            subFlow.flowDef = result as WorkflowDefinition;
             await subFlow.execute();
             return NEXT_ACTION;
         }
@@ -236,15 +245,26 @@ export class Flow implements IFlow {
         return num;
     }
 
+    private taskInfo(task: WorkflowTask): { id: string; type: string } {
+        if (typeof task === "string") {
+            return {
+                id: task,
+                type: "task",
+            };
+        }
+        return task;
+    }
+
     private async executeTaskNode(task: WorkflowTask): Promise<string | null> {
         const executionContext = this.executionContext;
         if (isExitingAll(executionContext)) return EXIT_ACTION;
 
-        switch (task.type) {
-            case 'task':
-                return await this.executeTask(task.id);
+        const { type, id } = this.taskInfo(task);
+        switch (type) {
+            case "task":
+                return await this.executeTask(id);
 
-            case 'parallel': {
+            case "parallel": {
                 const parallelTask = task as ParallelTask;
                 const tasks = parallelTask.tasks;
                 const concurrency = this.getValidConcurrency(parallelTask.concurrency);
@@ -293,8 +313,8 @@ export class Flow implements IFlow {
                 continue;
             }
 
-            if (typeof next === 'string') {
-                const targetIndex = tasks.findIndex(t => t.id === next);
+            if (typeof next === "string") {
+                const targetIndex = tasks.findIndex((t) => this.taskInfo(t).id === next);
                 if (targetIndex >= 0) {
                     i = targetIndex;
                 } else {
@@ -313,14 +333,22 @@ export class Flow implements IFlow {
      */
     async execute(): Promise<void> {
         if (!this.flowDef) {
-            throw new Error('[Flow] No workflow definition set. Use setWorkflow() before execute().');
+            throw new Error(
+                "[Flow] No workflow definition set. Use setWorkflow() before execute()."
+            );
         }
 
-        const ctx = this.executionContext;
-        console.log(`[Flow] Starting: ${this.flowDef.id} (Task: ${ctx.task.id})`);
+        // const ctx = this.executionContext;
+        // console.log(`[Flow] Starting: ${this.flowDef.id} (Task: ${ctx.task.id})`);
+
+        // for (let i = 0; i < 10; i++) {
+        //     await new Promise((resolve) => setTimeout(resolve, 2000));
+        //     this.app.tasks.reportProgress("do step 1...");
+        //     this.app.tasks.aiUpdate("\n\n test 1", i === 5);
+        //     await new Promise((resolve) => setTimeout(resolve, 1000));
+        // }
 
         await this.executeTaskList(this.flowDef.tasks);
-
         console.log(`[Flow] Completed: ${this.flowDef.id}`);
     }
 }
