@@ -36,6 +36,7 @@ export interface ChatState {
 export interface AiTask {
     id: string;
     name: string;
+    type: string;
     time: string; // 最后更新时间。
 }
 

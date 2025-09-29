@@ -30,6 +30,7 @@ export class Task implements ITask {
   readonly name: string;
   readonly time: string;
   readonly taskDir: string;
+  readonly type: string;
   readonly app: IAppContext;
   // 维护当前运行的subFlows.
   #subFlows: Record<string, IFlow> = {};
@@ -52,6 +53,7 @@ export class Task implements ITask {
     this.id = aiTask.id;
     this.name = aiTask.name;
     this.time = aiTask.time;
+    this.type = aiTask.type;
     this.app = app;
     this.taskDir = app.taskDir(this.id);
   }
@@ -88,7 +90,7 @@ export class Task implements ITask {
         if (exeCtx.onFinish) {
           try {
             exeCtx.onFinish(name || "plan", this.runningFlows.size);
-          } catch {}
+          } catch { }
         }
       });
       return true;

@@ -17,7 +17,8 @@ class CurrentTaskStore {
     private store = $state<AiTask>({
         id: "",
         name: "",
-        time: ""
+        time: "",
+        type: ""
     });
 
     get value() {
@@ -28,6 +29,7 @@ class CurrentTaskStore {
         const newValue: AiTask = {
             id: (task && typeof task.id === 'string') ? task.id : "",
             name: (task && typeof task.name === 'string') ? task.name : "",
+            type: (task && typeof task.type === 'string') ? task.type : "",
             time: (task && typeof task.name === 'string') ? task.time : ""
         };
         this.store = newValue;

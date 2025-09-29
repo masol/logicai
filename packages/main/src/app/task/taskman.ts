@@ -22,7 +22,7 @@ const NOCurrentTaskMsg =
   "没有任务被激活，请在输入框下方中间位置，新建或选择任务后继续。";
 
 function cvt2Aitask(task: ITask): AiTask {
-  return pick(task, ["id", "name", "time"]) as AiTask;
+  return pick(task, ["id", "name", "time", "type"]) as AiTask;
 }
 
 export class TaskMan implements ITaskMan {
@@ -111,6 +111,27 @@ export class TaskMan implements ITaskMan {
     this.app.emit(NewAiMsg, { message });
   }
 
+  updateCurrentTime() {
+    if (this.#current) {
+      const coll = this.app.db.collection<AiTask>(CollectName);
+
+      const existingRecord = coll.findOne({
+        id: this.#current.id
+      });
+      if (existingRecord) {
+        // 存在则更新
+        coll.updateWhere(
+          {
+            id: this.#current.id,
+          },
+          {
+            time: new Date().toISOString()
+          }
+        );
+      }
+    }
+  }
+
   async onUserInput(msg: Message): Promise<Message> {
     const result: Message = await this.runInContext(
       { input: msg, task: this.current },
@@ -150,6 +171,7 @@ export class TaskMan implements ITaskMan {
           console.log(`flow ${name} finished...`);
         };
 
+        this.updateCurrentTime();
         return exeCtx.output;
       }
     );
@@ -157,10 +179,11 @@ export class TaskMan implements ITaskMan {
     return result;
   }
 
-  async create(name: string): Promise<ITask> {
+  async create(name: string, type: string): Promise<ITask> {
     const task: Task | null = await this.loadTask({
       id: crypto.randomUUID(),
       name,
+      type,
       time: new Date().toISOString(),
     });
     if (!task) {

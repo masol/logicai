@@ -7,7 +7,7 @@ import { pick } from "remeda";
 
 function pickTask(task: AiTask | null) {
     if (task) {
-        return pick(task, ["id", "name", "time"]);
+        return pick(task, ["id", "name", "time", "type"]);
     }
     return task;
 }
@@ -31,8 +31,9 @@ async function userInput(app: IAppContext, userMsg: Message): Promise<Message> {
 }
 
 
-async function create(app: IAppContext, name: string) {
-    return pickTask(await app.tasks.create(name));
+async function create(app: IAppContext, name: string, type: string) {
+    console.log("name,type=", name, type)
+    return pickTask(await app.tasks.create(name, type));
 }
 
 

@@ -39,7 +39,7 @@
 
   async function doSubmit(msg: string) {
     await chatStore.addMessage(msg);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // await new Promise((resolve) => setTimeout(resolve, 1500));
   }
 
   async function handleSubmit() {

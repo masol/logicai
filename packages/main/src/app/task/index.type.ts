@@ -7,6 +7,7 @@ import type { IFlow } from "../flow/index.type.js";
 export interface AiTask {
   readonly id: string;
   readonly name: string;
+  readonly type: string; // 任务类型，默认为'plan'
   readonly time: string; // 最后更新时间。
   [key: string]: any;
 }
@@ -29,6 +30,12 @@ export interface ITask {
    * 任务的时间戳或计划时间。
    */
   readonly time: string;
+
+  /**
+   * 任务的类型。默认为'plan'.
+   */
+  readonly type: string;
+
 
   /**
    * 任务的根目录路径
@@ -107,7 +114,7 @@ export interface ITaskMan {
   // 在上下文异步链中才可以工作！否则应抛出异常。
   createResponse(content: string, type?: string): Message;
   // 此时自动设置为Active.
-  create(name: string): Promise<ITask>;
+  create(name: string, type: string): Promise<ITask>;
   // getById(id: string): Promise<AiTask | null>;
   setActiveTask(id: string): Promise<boolean>;
   loadCurrent(): Promise<ITask | null>;

@@ -4,7 +4,7 @@ import { BaseMessage } from "@langchain/core/messages";
 export interface LLMConfig {
     id: string;
     name: string;
-    provider: 'DeepSeek' | 'OpenAI' | 'Groq' | 'Moonshot' | 'Baichuan' | 'Zhipu' | 'OpenRouter';
+    provider: 'DeepSeek' | 'OpenAI' | 'Groq' | 'Moonshot' | 'Baichuan' | 'Zhipu' | 'OpenRouter' | 'QianWen';
     apiKey: string;
     enabled: boolean;
 }

@@ -15,6 +15,7 @@
   import LastPageIcon from "~icons/material-symbols/last-page";
   import InfoIcon from "~icons/material-symbols/info";
   import { rpc } from "@app/preload";
+  import { getLabel } from "./newTask";
 
   interface Props {
     open: boolean;
@@ -31,8 +32,8 @@
     "loading",
   );
 
-  const ITEMS_PER_PAGE = 9;
-  const MIN_LOADING_TIME = 300;
+  const ITEMS_PER_PAGE = 5;
+  const MIN_LOADING_TIME = 150;
 
   const totalPages = $derived(() => Math.ceil(tasks.length / ITEMS_PER_PAGE));
 
@@ -52,6 +53,8 @@
     try {
       const result = await rpc.task.get();
       tasks = result || [];
+
+      console.log("tasks=", tasks);
 
       // 确保最小加载时间
       const elapsed = Date.now() - startTime;
@@ -251,10 +254,10 @@
       </div>
 
       <!-- 内容区域 -->
-      <div class="flex-1 overflow-hidden">
+      <div class="flex-1 overflow-hidden flex flex-col min-h-0">
         {#if contentState === "loading"}
           <div
-            class="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-80"
+            class="flex flex-col items-center justify-center py-12 px-6 text-center min-h-80 flex-1 overflow-y-auto"
           >
             <div class="relative mb-4">
               <div
@@ -277,8 +280,7 @@
           </div>
         {:else if contentState === "error"}
           <div
-            class="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-80"
-            transition:fade={{ duration: 400 }}
+            class="flex flex-col items-center justify-center py-12 px-6 text-center min-h-80 flex-1 overflow-y-auto"
           >
             <div
               class="p-3 bg-red-100 dark:bg-red-900 dark:bg-opacity-20 rounded-full mb-4"
@@ -306,7 +308,7 @@
           </div>
         {:else if contentState === "empty"}
           <div
-            class="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-80"
+            class="flex flex-col items-center justify-center py-12 px-6 text-center min-h-80 flex-1 overflow-y-auto"
             transition:fade={{ duration: 400 }}
           >
             <div class="p-3 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
@@ -333,7 +335,7 @@
           </div>
         {:else if contentState === "single"}
           <div
-            class="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-80"
+            class="flex flex-col items-center justify-center py-12 px-6 text-center min-h-80 flex-1 overflow-y-auto"
             transition:fade={{ duration: 400 }}
           >
             <div
@@ -362,8 +364,8 @@
           </div>
         {:else if contentState === "list"}
           <div
-            class="p-6 h-full overflow-y-auto"
-            transition:fade={{ duration: 400 }}
+            class="p-6 flex-1 overflow-y-auto min-h-0"
+            transition:fade={{ duration: 150 }}
           >
             <div class="space-y-3">
               {#each paginatedTasks() as task, index (task.id)}
@@ -371,7 +373,7 @@
                   class={getTaskCardClass(task.id)}
                   transition:fly={{
                     x: -20,
-                    duration: 300,
+                    duration: 100,
                     delay: index * 50,
                     easing: cubicOut,
                   }}
@@ -390,7 +392,7 @@
                         {/if}
                       </div>
                       <h4 class={getTitleClass(task.id)}>
-                        {task.name}
+                        {task.name}({getLabel(task.type)})
                       </h4>
                       <div
                         class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
@@ -425,7 +427,7 @@
             {#if totalPages() > 1}
               <div
                 class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700"
-                transition:fade={{ duration: 300, delay: 300 }}
+                transition:fade={{ duration: 100, delay: 30 }}
               >
                 <div class="text-sm text-gray-500 dark:text-gray-400">
                   第 {currentPage} 页，共 {totalPages()} 页

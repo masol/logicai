@@ -8,6 +8,10 @@ import { render } from "ejs";
 import type { LLMConfig, CallResult, JSONCallResult } from "./index.type.js";
 // 提供商配置映射
 const PROVIDER_CONFIG = {
+    QianWen: {
+        baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        defaultModel: "qwen-flash"
+    },
     DeepSeek: {
         baseURL: 'https://api.deepseek.com',
         defaultModel: 'deepseek-chat'
@@ -22,7 +26,7 @@ const PROVIDER_CONFIG = {
     },
     Moonshot: {
         baseURL: 'https://api.moonshot.cn/v1',
-        defaultModel: 'moonshot-v1-8k'
+        defaultModel: 'moonshot-v1-auto'
     },
     Baichuan: {
         baseURL: 'https://api.baichuan-ai.com/v1',
@@ -91,6 +95,7 @@ export class LLMWrapper {
             case 'Baichuan':
             case 'Zhipu':
             case 'OpenRouter':
+            case 'QianWen':
                 return new ChatOpenAI({
                     apiKey: this.config.apiKey,
                     openAIApiKey: this.config.apiKey,

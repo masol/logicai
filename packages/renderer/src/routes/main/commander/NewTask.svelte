@@ -6,6 +6,7 @@
   import { rpc } from "@app/preload";
   import { chatStore, type AiTask } from "$lib/stores/chatStore";
   import { currentTaskStore } from "$lib/stores/shared.svelte";
+  import TaskTypes from "./newTask";
 
   interface Props {
     open: boolean;
@@ -15,6 +16,7 @@
   let { open = $bindable(false), oncreated }: Props = $props();
 
   let taskName = $state("");
+  let taskType = $state("plan");
   let isCreating = $state(false);
   let error = $state("");
   let inputRef = $state<HTMLInputElement>();
@@ -36,7 +38,10 @@
     // 启动进度动画
     progress.set(100);
 
-    const task: AiTask = await rpc.task.create(taskName.trim());
+    const task: AiTask = await rpc.task.create(
+      taskName.trim(),
+      taskType.trim(),
+    );
 
     // 模拟随机错误
     if (!task || !task.id) {
@@ -64,6 +69,7 @@
 
     // 重置状态
     taskName = "";
+    taskType = "plan";
     isCreating = false;
     error = "";
     progress.set(0);
@@ -223,6 +229,30 @@
                   : 'border-gray-300 dark:border-gray-600'}"
                 autocomplete="off"
               />
+            </div>
+
+            <!-- 任务类型选择 -->
+            <div class="space-y-2">
+              <label
+                for="taskType"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                任务类型
+              </label>
+              <select
+                bind:value={taskType}
+                id="taskType"
+                class="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700
+               text-gray-900 dark:text-white
+               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+               hover:border-gray-400 dark:hover:border-gray-500
+               transition-all duration-200
+               border-gray-300 dark:border-gray-600"
+              >
+                {#each TaskTypes as option}
+                  <option value={option.value}>{option.label}</option>
+                {/each}
+              </select>
             </div>
 
             <div class="flex gap-3 pt-4">
