@@ -41,13 +41,13 @@ export class AppContext implements IAppContext {
         this.tasks.loadCurrent();
 
         //加载和初始化llm集合
-        const allModels = getSetting(this, "models") ?? { llm: [] };
+        const allModels = getSetting(this, "models") || { llm: [] };
 
         // console.log("models=", allModels.llm)
         this.llms.init(allModels.llm);
 
-        // console.log("llm status=")
-        // console.dir(this.llms.getInstancesStatus());
+        //  console.log("llm status=")
+        //  console.dir(this.llms.getInstancesStatus());
 
         this.onInitStep("db");
       }

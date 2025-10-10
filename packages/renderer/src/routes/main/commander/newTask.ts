@@ -1,7 +1,9 @@
 const TaskTypes = [
-    { label: "通用执行", value: "plan" },
+    { label: "通用规划", value: "plan" },
     { label: "-Rust Web", value: "rsweb" },
     { label: "-网络小说", value: "novel" },
+    { label: "-论文", value: "article" },
+    { label: "-PPT", value: "ppt" },
     { label: "通用沟通", value: "chat" }
 ]
 

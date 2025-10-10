@@ -32,7 +32,7 @@ async function userInput(app: IAppContext, userMsg: Message): Promise<Message> {
 
 
 async function create(app: IAppContext, name: string, type: string) {
-    console.log("name,type=", name, type)
+    // console.log("name,type=", name, type)
     return pickTask(await app.tasks.create(name, type));
 }
 
@@ -54,11 +54,24 @@ async function history(app: IAppContext) {
     return { messages: [], total: 0 };
 }
 
+
+// 加载当前激活task的sharedContext.
+async function shared(app: IAppContext) {
+    const current = app.tasks.current
+    // console.log("history current=", current)
+    if (current && current.id) {
+        return current.sharedContext;
+    }
+    return null;
+}
+
+
 export default {
     get,
     create,
     current,
     active,
     history,
-    userInput
+    userInput,
+    shared,
 };

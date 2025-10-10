@@ -5,6 +5,9 @@ import electronPath from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// 可配置文本文件后缀
+const TEXT_FILE_EXTENSIONS = ['.pl', '.emd', '.txt'];
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => ({
@@ -31,7 +34,7 @@ export default defineConfig(({ mode }) => ({
     reportCompressedSize: false,
   },
   plugins: [
-    rawPlPlugin(),      // 处理 .pl 文件
+    rawTextImportPlugin(TEXT_FILE_EXTENSIONS), // 支持多种文本后缀
     handleHotReload(),  // 热重启 Electron 主进程
   ],
   resolve: {
@@ -42,14 +45,16 @@ export default defineConfig(({ mode }) => ({
 }));
 
 /**
- * 允许 import .pl 文件，作为字符串使用
+ * 通用文本导入插件
+ * 允许把指定后缀的文件作为字符串导入
+ * @param {string[]} extensions
  * @return {import('vite').Plugin}
  */
-function rawPlPlugin() {
+function rawTextImportPlugin(extensions) {
   return {
-    name: 'vite-plugin-raw-pl',
+    name: 'vite-plugin-raw-text',
     transform(code, id) {
-      if (id.endsWith('.pl')) {
+      if (extensions.some(ext => id.endsWith(ext))) {
         return {
           code: `export default ${JSON.stringify(code)};`,
           map: null,
@@ -58,6 +63,7 @@ function rawPlPlugin() {
     },
   };
 }
+
 
 /**
  * 实现 Electron 主进程文件变更时自动重启

@@ -98,6 +98,33 @@ export class Task implements ITask {
     return false;
   }
 
+  public async save(): Promise<void> {
+    let persistData: PersistData = {
+      context: this.#sharedContext,
+    };
+
+    if (this.#entry && this.#entry.name) {
+      persistData.flows = {
+        entry: this.#entry.name
+      }
+
+      const subFlows = Object.keys(this.#subFlows)
+      if (subFlows.length > 0) {
+        persistData.flows.subflows = subFlows;
+      }
+    }
+
+    try {
+      const ctxPath = path.join(this.taskDir, ContextFile);
+      // 先确保目录存在
+      await fs.mkdir(this.taskDir, { recursive: true });
+      await fs.writeFile(ctxPath, JSON.stringify(persistData));
+    } catch (err) {
+      // 文件存在但读取或解析失败，忽略错误
+      // contextData 保持 null 或可按需处理
+    }
+  }
+
   private async init(): Promise<void> {
     // Step1: 初始化 swipl 存储
     // 此步骤放入Swipl实现，并负责同步。加载文件ontology.json，并设置给this.#store(保存了)   // 不使用rdf.n3格式了。
@@ -119,7 +146,7 @@ export class Task implements ITask {
       this.#sharedContext = persistData.context;
     }
 
-    let entryId = persistData.flows?.entry || "plan";
+    let entryId = persistData.flows?.entry || this.type;
     let subFlows = persistData.flows?.subflows || [];
 
     // const services = this.loadServices(executionContext?.entry.)

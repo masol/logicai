@@ -5,7 +5,11 @@ import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { BaseMessage } from "@langchain/core/messages";
 import { JsonOutputParser } from "@langchain/core/output_parsers";
 import { render } from "ejs";
+import { decode } from 'html-entities'
+import JSON5 from 'json5'
+import { marked, Tokens } from "marked";
 import type { LLMConfig, CallResult, JSONCallResult } from "./index.type.js";
+
 // 提供商配置映射
 const PROVIDER_CONFIG = {
     QianWen: {
@@ -137,15 +141,52 @@ export class LLMWrapper {
         return String(result);
     }
 
+    private parseJSON(jsonString: string): any {
+        try {
+            return JSON5.parse(jsonString);
+        } catch {
+            try {
+                return JSON5.parse(decode(jsonString))
+            } catch { }
+            return null;
+        }
+    }
+
     /**
      * 解析JSON字符串
      */
-    private parseJSON(jsonString: string): any {
+    private async extractJSON(jsonString: string): Promise<any> {
         try {
-            return JSON.parse(jsonString);
+            // console.log("jsonstring=", jsonString)
+            return await this.jsonParser.parse(jsonString);
         } catch {
-            return null;
+            try {
+                return this.parseJSON(jsonString)
+            } catch {
+                return this.extractJsonBlock(jsonString);
+            }
         }
+    }
+
+    private extractJsonBlock(markdown: string): any[] | any {
+        const tokens = marked.lexer(markdown);
+
+        const jsonBlocks = tokens
+            .filter((t): t is Tokens.Code => t.type === "code") // 类型守卫
+            .filter(t => !t.lang || t.lang.toLowerCase() === "json")
+            .map(t => {
+                try {
+                    return this.parseJSON(t.text.trim());
+                } catch {
+                    return null;
+                }
+            })
+            .filter(Boolean);
+
+        if (jsonBlocks.length === 1) {
+            return jsonBlocks[0]
+        }
+        return jsonBlocks;
     }
 
     /**
@@ -198,7 +239,7 @@ export class LLMWrapper {
         }
 
         let response = callResult.response!;
-        let jsonResult = this.parseJSON(response);
+        let jsonResult = await this.extractJSON(response);
 
         // 如果第一次解析成功，直接返回
         if (jsonResult !== null) {
@@ -226,7 +267,7 @@ export class LLMWrapper {
                 }
 
                 response = fixResult.response!;
-                jsonResult = this.parseJSON(response);
+                jsonResult = await this.extractJSON(response);
 
                 // 如果解析成功，返回结果
                 if (jsonResult !== null) {

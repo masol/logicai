@@ -57,7 +57,7 @@
     "rxjs": "^7.8.2",
     "sirv": "^3.0.1",
     "svelte-exmarkdown": "^5.0.1",
-    "svelte-jsoneditor": "^3.8.0",
+    "svelte-jsoneditor": "^3.10.0",
     "unplugin-icons": "^22.1.0",
     "zod": "^3.25.72"
   }

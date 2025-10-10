@@ -1,9 +1,20 @@
 import type { IAppContext } from "../context.type.js";
 import { Flow } from "./flow.js";
-import type { IFlow, IFlowFactory } from "./index.type.js";
+import type { ActionEntry, IFlow, IFlowFactory, WorkflowDefinition } from "./index.type.js";
 import path from "path";
-import Plan from "./internal/plan.js"
+import Plan from "./plan/index.js"
+import Novel from './novel/index.js'
 import validator from 'validator';
+
+type FlowDef = {
+    actions: Record<string, ActionEntry>,
+    flowDef: WorkflowDefinition
+}
+
+const Id2Cls: Record<string, FlowDef> = {
+    'plan': Plan,
+    'novel': Novel
+}
 
 export class FlowFactory implements IFlowFactory {
     private app: IAppContext;
@@ -18,12 +29,14 @@ export class FlowFactory implements IFlowFactory {
         if (validator.isUUID(id)) {
             throw new Error(`Unsupported id: ${id}`);
             // return this.loadByUUID(id);
-        } else if (id === "plan") {
-            const flow = new Flow(this.app);
-            flow.setActions(Plan.actions);
-            flow.setWorkflow(Plan.flowDef);
-            return flow;
         } else {
+            const ClsObj = Id2Cls[id];
+            if (ClsObj) {
+                const flow = new Flow(this.app, id);
+                flow.setActions(ClsObj.actions);
+                flow.setWorkflow(ClsObj.flowDef);
+                return flow;
+            }
             throw new Error(`Unsupported id: ${id}`);
         }
     }

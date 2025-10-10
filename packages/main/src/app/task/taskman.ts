@@ -134,7 +134,7 @@ export class TaskMan implements ITaskMan {
 
   async onUserInput(msg: Message): Promise<Message> {
     const result: Message = await this.runInContext(
-      { input: msg, task: this.current },
+      { input: msg, task: this.current, models: {} },
       async () => {
         await this.app.history.addMessage(msg);
 
@@ -165,7 +165,12 @@ export class TaskMan implements ITaskMan {
             if (exeCtx.output) {
               delete exeCtx.output.content.isProcessing;
               delete exeCtx.output.content.processingSteps;
+              const response = exeCtx.response || "已完成，未给出提示"
+              this.aiUpdate(response, true);
+              exeCtx.output.content.content = response;
+              exeCtx.models = {}; // 删除models，防止循环引用．
               await this.app.history.addMessage(exeCtx.output);
+              await this.current?.save();
             }
           }
           console.log(`flow ${name} finished...`);

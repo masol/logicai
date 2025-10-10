@@ -99,6 +99,7 @@ export interface WorkflowDefinition {
  * 并提供执行、持久化和状态管理功能。
  */
 export interface IFlow {
+    readonly name: string;
     // --- 状态管理方法 ---
 
     /**

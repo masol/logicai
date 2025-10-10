@@ -36,13 +36,15 @@ export class Flow implements IFlow {
     private actions: Map<string, ActionEntry> = new Map();
     private flowDef: WorkflowDefinition | null = null;
     private app: IAppContext;
+    readonly name: string;
     #dirty: boolean = false;
 
     /**
      * 构造函数支持可选 workflowDef
      */
-    constructor(app: IAppContext, flowDef?: WorkflowDefinition) {
+    constructor(app: IAppContext, name: string, flowDef?: WorkflowDefinition) {
         this.app = app;
+        this.name = name;
         if (flowDef) {
             this.setWorkflow(flowDef);
         }
@@ -227,7 +229,7 @@ export class Flow implements IFlow {
             "id" in result &&
             "tasks" in result
         ) {
-            const subFlow = new Flow(this.app);
+            const subFlow = new Flow(this.app, this.name);
             subFlow.actions = this.actions; // 共享 actions
             subFlow.flowDef = result as WorkflowDefinition;
             await subFlow.execute();

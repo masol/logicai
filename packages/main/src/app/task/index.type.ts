@@ -73,6 +73,8 @@ export interface ITask {
 
   runFlow(name?: string): Promise<boolean>;
 
+  save(): Promise<void>
+
   // 注意：TypeScript 中接口不能直接声明 static 方法，但可通过文档说明或模块导出约定表达
   // 实际使用中，create 方法由 executionContext 实现，使用者通过 executionContext.create 调用
 }
@@ -121,12 +123,19 @@ export interface ITaskMan {
   onUserInput(msg: Message): Promise<Message>;
 }
 
+export interface AbstractModel {
+  get(path: string, defval: any): any;
+  set(path: string, val: any): void;
+}
+
 // 异步链相关的context.每个异步链独享一个。
 export interface ExecutionContext {
   input: Message;
   task: ITask;
   output?: Message;
+  response?: string; // AI最后的回应，如果有，则需要覆盖output.content.content的值。
   isExitingAll?: boolean;
   onFinish?: (flowId: string, left: number) => void;
+  models: Record<string, AbstractModel>;
   [key: string]: any;
 }

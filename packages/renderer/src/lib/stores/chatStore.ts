@@ -145,6 +145,10 @@ interface HistoryLoadResult {
 }
 
 export async function loadHistory() {
+    if (!currentTaskStore.isValid()) {
+        chatStore.setMessages([])
+        return;
+    }
     const infos: HistoryLoadResult = await rpc.task.history();
     if (infos) {
         // console.log("loaded history", infos.messages, infos.total)

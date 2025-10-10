@@ -25,6 +25,19 @@ class CurrentTaskStore {
         return this.store;
     }
 
+    isValid() {
+        return !!this.store.id
+    }
+
+    empty() {
+        this.set({
+            id: "",
+            name: "",
+            time: "",
+            type: ""
+        })
+    }
+
     set(task: any) {
         const newValue: AiTask = {
             id: (task && typeof task.id === 'string') ? task.id : "",
@@ -43,6 +56,10 @@ export const currentTaskStore = new CurrentTaskStore();
 
 
 export async function initSharedStores() {
-    androidNameStore.set(await rpc.sys.get("androidName"));
-    currentTaskStore.set(await rpc.task.current());
+    androidNameStore.set((await rpc.sys.get("androidName")) || "指挥官" );
+    try {
+        currentTaskStore.set(await rpc.task.current());
+    } catch {
+        currentTaskStore.empty();
+    }
 }
