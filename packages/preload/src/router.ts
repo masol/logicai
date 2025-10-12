@@ -74,5 +74,6 @@ export const rpc = {
         active: async (...args: any[]) => electronInvoke("task.active", ...args),
         userInput: async (...args: any[]) => electronInvoke("task.userInput", ...args),
         shared: async (...args: any[]) => electronInvoke("task.shared", ...args),
+        saveShared: async (...args: any[]) => electronInvoke("task.saveShared", ...args),
     }
 };

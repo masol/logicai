@@ -3,7 +3,8 @@ import { type IAppContext } from "../app/context.type.js";
 import { type AiTask } from "../app/task/index.type.js";
 import { CollectName } from "../app/task/taskman.js";
 import type { Message } from "../app/history.type.js";
-import { pick } from "remeda";
+import { isEmpty, isPlainObject, pick } from "remeda";
+import * as R from "remeda";
 
 function pickTask(task: AiTask | null) {
     if (task) {
@@ -65,6 +66,26 @@ async function shared(app: IAppContext) {
     return null;
 }
 
+async function saveShared(app: IAppContext, value: Record<string, any>) {
+    const current = app.tasks.current
+    if (!current?.id) return;
+
+    if (isEmpty(value) || !isPlainObject(value)) return;
+
+    // 删除 sharedContext 顶层中、但不在 value 中的键
+    for (const k of Object.keys(current.sharedContext)) {
+        if (!(k in value)) delete current.sharedContext[k];
+    }
+
+    // 再做 mergeDeep 合并覆盖
+    const merged = R.mergeDeep(R.mergeDeep({}, current.sharedContext), value);
+    for (const k of Object.keys(merged)) {
+        current.sharedContext[k] = merged[k];
+    }
+
+    await current.save();
+}
+
 
 export default {
     get,
@@ -74,4 +95,5 @@ export default {
     history,
     userInput,
     shared,
+    saveShared
 };

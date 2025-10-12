@@ -4,9 +4,9 @@ import { Common } from "./model/common.js";
 import { Target } from "./model/target.js";
 import { render } from "ejs";
 import Tpl from "./prompt/target/target.emd";
-import mergeTpl from "./prompt/target/merge.emd";
+// import mergeTpl from "./prompt/target/merge.emd";
 import fillTpl from "./prompt/target/fill.emd";
-import { isEmpty } from "remeda";
+// import { isEmpty } from "remeda";
 
 export default async function (exeCtx: ExecutionContext) {
     const userInput = exeCtx.input.content.content.trim();
@@ -18,55 +18,32 @@ export default async function (exeCtx: ExecutionContext) {
     });
     const result = await exeCtx.task.app.llms.callJSON(prompt);
     if (result.success && result.json) {
-        console.log(result.json);
-        if (!hasValueDeep(result.json)) {
+        // console.log(result.json);
+        if (!hasValueDeep(result.json) || !(result.json["类型"] || result.json["读者性别"] || result.json["读者身份"])) {
             exeCtx.response =
-                "未提供任意线索，请就您小说的读者对象，做任意的描述－－也可以直接描述小说的风格等内容．";
+                "请提供小说类型，以及读者性别和职业．";
             return "_exit";
         }
 
-        const old_profile = target.hasValue()
-            ? JSON.stringify(target.dump())
-            : false;
+        const 类型 = result.json["类型"] || target.类型;
+        const 读者性别 = result.json["读者性别"] || target.读者性别;
+        const 读者身份 = [...result.json["读者身份"], ...target.读者身份];
 
-        let finalJson;
-        if (!old_profile) { //没有旧值，使用fill template.
-            const prompt = render(fillTpl, {
-                profile: JSON.stringify(result.json)
-            })
-            const finalResult = await exeCtx.task.app.llms.callJSON(prompt);
-            if (finalResult.success && finalResult.json) {
-                finalJson = finalResult.json;
+        const prompt = render(fillTpl, {
+            profile: {
+                类型,
+                读者性别,
+                读者身份
             }
+        })
 
-        } else {// 有旧值，使用merge template.
-            for (const key in result.json) {
-                // 确保属性是对象自身的，而不是从原型链继承的
-                let stepProfile = old_profile;
-                if (result.json.hasOwnProperty(key)) {
-                    const value = result.json[key];
-                    if (!isEmpty(value)) {
-                        console.log(`process ${key}= ${value}`)
-                        const prompt = render(mergeTpl, {
-                            changed_field: key,
-                            new_value: JSON.stringify(value),
-                            current_profile: stepProfile
-                        })
-                        const finalResult = await exeCtx.task.app.llms.callJSON(prompt);
-                        if (finalResult.success && finalResult.json) {
-                            finalJson = finalResult.json;
-                            stepProfile = JSON.stringify(finalJson);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (!finalJson) {
+        const finalResult = await exeCtx.task.app.llms.callJSON(prompt);
+        if (finalResult.success && finalResult.json) {
+            target.set("", finalResult.json);
+        } else {
             exeCtx.response =
                 "发生错误，无法分析目标用户画像．";
             return "_exit";
         }
-        target.set("", finalJson);
     }
 }

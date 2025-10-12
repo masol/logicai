@@ -1,6 +1,8 @@
 import { WorkflowDefinition } from "../index.type.js";
+import concept from "./concept.js";
 import dispatch from "./dispatch.js";
 import target from "./target.js";
+import theme from './theme.js'
 
 export default {
     actions: {
@@ -12,12 +14,22 @@ export default {
             type: "function",
             fn: target
         },
+        主题设定: {
+            type: "function",
+            fn: theme
+        },
+        高概念: {
+            type: "function",
+            fn: concept
+        },
     } as const,
     flowDef: {
         id: "novel",
         tasks: [
             "任务分遣",
-            "读者分析"
+            "高概念",
+            "读者分析",
+            "主题设定"
         ],
     } as WorkflowDefinition,
 };
