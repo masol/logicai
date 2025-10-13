@@ -11,7 +11,7 @@ export default async function (exeCtx: ExecutionContext) {
             uinputs.shift();
             exeCtx.input.content.content = uinputs.join(' ').trim();
             if (!exeCtx.input.content.content) {
-                console.log("/c 没有给出正文，退出！")
+                console.log("/n 没有给出正文，退出！")
                 return "_exit";
             }
             return "_next";

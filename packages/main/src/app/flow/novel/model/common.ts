@@ -14,12 +14,15 @@ export class Common extends BaseModel {
     @refprop("next", "")
     next!: string
 
-    @refprop("themeSet", {})
-    themeSet!: Record<string, any>
+    // @refprop("themeSet", [])
+    // themeSet!: Record<string, any>[]
 
     @refprop("theme", {})
     theme!: Record<string, any>
 
     @refprop("highConceptSet", [])
     highConceptSet!: Record<string, any>[]
+
+    @refprop("highConcept", {})
+    highConcept!: Record<string, any>
 }

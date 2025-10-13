@@ -46,6 +46,23 @@ export function hasValueDeep(val: any): boolean {
     return true;
 }
 
+export function hasValueEmpty(val: any): boolean {
+    if (val == null) return true;
+    if (isEmpty(val)) return true;
+    if (typeof val === "string") return val.trim().length === 0;
+
+    if (Array.isArray(val)) {
+        return val.some(hasValueEmpty);
+    }
+
+    if (typeof val === "object") {
+        return Object.values(val).some(hasValueEmpty);
+    }
+
+    // number, boolean, function, symbol 等都认为“有值”.因此返回false.
+    return false;
+}
+
 /**
  * 流程模型的抽象基类，提供运行时上下文管理、基于路径的数据访问，以及任务链的单例工厂逻辑。
  *

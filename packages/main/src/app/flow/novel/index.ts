@@ -10,11 +10,11 @@ export default {
             type: "function",
             fn: dispatch
         },
-        读者分析: {
+        受众分析: {
             type: "function",
             fn: target
         },
-        主题设定: {
+        主题设计: {
             type: "function",
             fn: theme
         },
@@ -28,8 +28,8 @@ export default {
         tasks: [
             "任务分遣",
             "高概念",
-            "读者分析",
-            "主题设定"
+            "受众分析",
+            "主题设计"
         ],
     } as WorkflowDefinition,
 };

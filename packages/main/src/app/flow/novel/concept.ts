@@ -1,10 +1,10 @@
 import { ExecutionContext } from "../../task/index.type.js";
 import { Common } from "./model/common.js";
-import { Target } from "./model/target.js";
 import { render } from "ejs";
 import Tpl from "./prompt/concept/high.emd";
-import pMap from "p-map";
+// import pMap from "p-map";
 import { isEmpty } from 'remeda';
+import selecTpl from './prompt/concept/select.emd'
 
 
 export default async function (exeCtx: ExecutionContext) {
@@ -14,7 +14,7 @@ export default async function (exeCtx: ExecutionContext) {
         userInput,
     });
 
-    console.log("prompt=", prompt)
+    // console.log("prompt=", prompt)
 
     const results = await Promise.all([
         exeCtx.task.app.llms.callJSON(prompt),
@@ -31,14 +31,26 @@ export default async function (exeCtx: ExecutionContext) {
         }
     });
 
-    const common = Common.inst(exeCtx)
-    if (highConcepts.length === 0) {
+    const errorRet = () => {
         exeCtx.response = "发生错误，无法确定高概念．";
-    } else {
-        common.highConceptSet = highConcepts;
+        return "_exit";
     }
 
+    const common = Common.inst(exeCtx);
 
-    return "_exit";
+    // 1. 先收集所有可能的错误
+    if (highConcepts.length === 0) {
+        return errorRet();
+    }
 
+    // 2. 正常路径：唯一分支
+    common.highConceptSet = highConcepts;
+    const selPrompt = render(selecTpl, { highConcepts });
+    const finalResult = await exeCtx.task.app.llms.callJSON(selPrompt);
+
+    if (!finalResult.success || !finalResult.json) {
+        return errorRet();
+    }
+
+    common.highConcept = finalResult.json;
 }
