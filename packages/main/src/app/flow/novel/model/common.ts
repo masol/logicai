@@ -22,8 +22,8 @@ export class Common extends BaseModel {
     synthesis!: Record<string, any>[]
 
     // 主角沿主题演化路径-主角弧线。
-    @refprop("arc", [])
-    arc!: Record<string, any>[]
+    @refprop("arc", {})
+    arc!: Record<string, any>
 
     // 世界定义．
     @refprop("world", {})

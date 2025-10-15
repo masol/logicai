@@ -6,6 +6,7 @@ import target from "./target.js";
 import theme from './theme.js'
 import arc from './arc.js'
 import world from './world.js'
+import plot from './plot.js'
 
 export default {
     actions: {
@@ -36,6 +37,10 @@ export default {
         世界设定: {
             type: "function",
             fn: world
+        },
+        情节骨架: {
+            type: "function",
+            fn: plot
         }
     } as const,
     flowDef: {
@@ -47,7 +52,8 @@ export default {
             "主题设计",
             "主题变奏",
             "主角弧光",
-            "世界设定"
+            "世界设定",
+            "情节骨架"
         ],
     } as WorkflowDefinition,
 };

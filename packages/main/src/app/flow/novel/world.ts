@@ -42,5 +42,5 @@ export default async function (exeCtx: ExecutionContext) {
     }
 
     common.world = result.json;
-    console.log("world=", common.world)
+    // console.log("world=", common.world)
 }

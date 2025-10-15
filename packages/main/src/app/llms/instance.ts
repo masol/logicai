@@ -143,14 +143,23 @@ export class LLMWrapper {
     }
 
     private parseJSON(jsonString: string): any {
-        try {
-            return JSON5.parse(jsonString);
-        } catch {
+        const parsingAttempts = [
+            () => JSON5.parse(jsonString),
+            () => JSON5.parse(decode(jsonString))
+        ];
+
+        for (const attempt of parsingAttempts) {
             try {
-                return JSON5.parse(decode(jsonString))
-            } catch { }
-            return null;
+                const result = attempt();
+                if (!isEmpty(result)) {
+                    return result;
+                }
+            } catch {
+                // 忽略错误，继续尝试下一个解析方法
+                continue;
+            }
         }
+        return null;
     }
 
     /**
