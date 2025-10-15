@@ -9,6 +9,7 @@ import { decode } from 'html-entities'
 import JSON5 from 'json5'
 import { marked, Tokens } from "marked";
 import type { LLMConfig, CallResult, JSONCallResult } from "./index.type.js";
+import { isEmpty } from "remeda";
 
 // 提供商配置映射
 const PROVIDER_CONFIG = {
@@ -156,16 +157,25 @@ export class LLMWrapper {
      * 解析JSON字符串
      */
     private async extractJSON(jsonString: string): Promise<any> {
-        try {
-            // console.log("jsonstring=", jsonString)
-            return await this.jsonParser.parse(jsonString);
-        } catch {
+        const parsingAttempts = [
+            () => this.jsonParser.parse(jsonString),
+            () => this.parseJSON(this.extractJsonBlock(jsonString)),
+            () => this.parseJSON(jsonString)
+        ];
+
+        for (const attempt of parsingAttempts) {
             try {
-                return this.parseJSON(jsonString)
+                const result = await attempt();
+                if (result && !isEmpty(result)) {
+                    return result;
+                }
             } catch {
-                return this.extractJsonBlock(jsonString);
+                // 忽略错误，继续尝试下一个解析方法
+                continue;
             }
         }
+
+        return null;
     }
 
     private extractJsonBlock(markdown: string): any[] | any {
@@ -183,10 +193,10 @@ export class LLMWrapper {
             })
             .filter(Boolean);
 
-        if (jsonBlocks.length === 1) {
+        if (jsonBlocks.length > 0) {
             return jsonBlocks[0]
         }
-        return jsonBlocks;
+        return markdown;
     }
 
     /**

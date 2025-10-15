@@ -1,6 +1,7 @@
 import { WorkflowDefinition } from "../index.type.js";
 import concept from "./concept.js";
 import dispatch from "./dispatch.js";
+import synthesis from "./synthesis.js";
 import target from "./target.js";
 import theme from './theme.js'
 
@@ -18,6 +19,10 @@ export default {
             type: "function",
             fn: theme
         },
+        主题变奏: {
+            type: "function",
+            fn: synthesis
+        },
         高概念: {
             type: "function",
             fn: concept
@@ -29,7 +34,8 @@ export default {
             "任务分遣",
             "高概念",
             "受众分析",
-            "主题设计"
+            "主题设计",
+            "主题变奏"
         ],
     } as WorkflowDefinition,
 };

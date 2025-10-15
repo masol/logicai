@@ -154,3 +154,15 @@ class 主题管理器 {
 ```
 
  */
+
+import { BaseModel, refprop } from "../../basemodel.js";
+
+
+
+export class Synthesis extends BaseModel {
+  static key = "Synthesis";
+  static basePath = "synthesis"
+
+  @refprop("name", "")
+  name!: string
+}
