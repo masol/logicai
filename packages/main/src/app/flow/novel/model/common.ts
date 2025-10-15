@@ -25,6 +25,11 @@ export class Common extends BaseModel {
     @refprop("arc", [])
     arc!: Record<string, any>[]
 
+    // 世界定义．
+    @refprop("world", {})
+    world!: Record<string, any>
+
+
     @refprop("theme", {})
     theme!: Record<string, any>
 

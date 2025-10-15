@@ -4,6 +4,8 @@ import dispatch from "./dispatch.js";
 import synthesis from "./synthesis.js";
 import target from "./target.js";
 import theme from './theme.js'
+import arc from './arc.js'
+import world from './world.js'
 
 export default {
     actions: {
@@ -27,6 +29,14 @@ export default {
             type: "function",
             fn: concept
         },
+        主角弧光: {
+            type: "function",
+            fn: arc
+        },
+        世界设定: {
+            type: "function",
+            fn: world
+        }
     } as const,
     flowDef: {
         id: "novel",
@@ -35,7 +45,9 @@ export default {
             "高概念",
             "受众分析",
             "主题设计",
-            "主题变奏"
+            "主题变奏",
+            "主角弧光",
+            "世界设定"
         ],
     } as WorkflowDefinition,
 };
