@@ -25,6 +25,8 @@ export type FunctionResult =
     | WorkflowDefinition             // 子流程定义
     | { [key: string]: any };        // 普通对象或数组
 
+export type FnType = (exeCtx: ExecutionContext) => Promise<FunctionResult>
+
 /**
  * 本地函数 Action
  */
@@ -34,7 +36,7 @@ export interface FunctionAction {
         description?: string;
         [key: string]: any
     };
-    fn: (exeCtx: ExecutionContext) => Promise<FunctionResult>;
+    fn: FnType;
 }
 
 /**
@@ -53,7 +55,7 @@ export interface LLMAction {
 /**
  * 联合 Action 类型
  */
-export type ActionEntry = FunctionAction | LLMAction;
+export type ActionEntry = FunctionAction | LLMAction | FnType;
 
 /**
  * 任务类型

@@ -9,12 +9,14 @@ import type {
     WorkflowDefinition,
     WorkflowTask,
     IFlow,
+    FnType,
 } from "./index.type.js";
 
 import { WORKFLOW_EXIT_ALL, WORKFLOW_RETURN } from "./index.type.js";
 
 import type { ExecutionContext } from "../task/index.type.js";
 import type { IAppContext } from "../context.type.js";
+import { isFunction } from "remeda";
 
 const NEXT_ACTION = "_next";
 const EXIT_ACTION = "_exit";
@@ -180,14 +182,25 @@ export class Flow implements IFlow {
     private async executeTask(taskId: string): Promise<string | null> {
         const executionContext = this.executionContext;
         const action = this.actions.get(taskId);
-        if (!action || action.type !== "function") {
+
+        let fn: FnType | null = null;
+
+        if (!action) {
             return NEXT_ACTION;
+        }
+
+        if (isFunction(action)) {
+            fn = action;
+        } else if (action.type === "function") {
+            fn = action.fn;
+        } else {
+            throw new Error("Not Implement LLM action.")
         }
 
         let result: FunctionResult;
 
         try {
-            result = await action.fn(executionContext);
+            result = await fn(executionContext);
         } catch (error) {
             console.warn(`[Flow] Action '${taskId}' failed:`, error);
             return NEXT_ACTION;

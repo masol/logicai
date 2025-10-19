@@ -8,7 +8,8 @@ const WorldMapping: Record<string, any> = {
     "历史": HistoryTpl,
     "架空": HistoryTpl,
     "架空历史": HistoryTpl,
-    "历史架空": HistoryTpl
+    "历史架空": HistoryTpl,
+    "系统流": HistoryTpl
 }
 
 
@@ -17,6 +18,7 @@ export default async function (exeCtx: ExecutionContext) {
     const common = Common.inst(exeCtx);
     const target = Target.inst(exeCtx);
     common.next = "世界设定";
+    const userInput = exeCtx.input.content.content.trim();
 
     const errorRet = (msg = "发生错误，无法设计世界参数.") => {
         exeCtx.response = msg;
@@ -32,6 +34,7 @@ export default async function (exeCtx: ExecutionContext) {
         highConcept: common.highConcept,
         theme: common.theme,
         arc: common.arc,
+        userInput,
         target: target.dump()
     });
 

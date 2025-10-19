@@ -3,7 +3,7 @@ import { Common } from "./model/common.js";
 import { Target } from "./model/target.js";
 import { Plot } from "./model/plot.js";
 import { render } from "ejs";
-import ploTpl from './prompt/plot/key.emd'
+import ploTpl from './prompt/plot/role.emd'
 
 
 export default async function (exeCtx: ExecutionContext) {
@@ -37,8 +37,8 @@ export default async function (exeCtx: ExecutionContext) {
     }
 
 
-    const mainPlots = []; //plot.mainPlots;
-    mainPlots.push(result.json)
+    const mainPlots = [...plot.mainPlots,...result.json.欲望代价组合列表];
+    // mainPlots.push(result.json)
     plot.mainPlots = mainPlots;
 
     console.log("plot=", plot.mainPlots)
