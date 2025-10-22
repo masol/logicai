@@ -1,20 +1,9 @@
 // import { isPlainObject } from "remeda";
 import { ExecutionContext } from "../../task/index.type.js";
 import { Common } from "./model/common.js";
-import Outline from './cmds/outline.js'
-import Expand from './cmds/expand.js'
-import AddChar from './cmds/char/add.js'
-import { isNumber } from "remeda";
+import { outlineCmds, charCmds, plotCmds } from './cmds/index.js'
 
 type Fntype = (exeCtx: ExecutionContext, args: any[]) => Promise<string | undefined>
-
-const OutlineCmds: Record<string, Fntype> = {
-    "expand": Expand
-}
-
-const CharCmds: Record<string, Fntype> = {
-    "add": AddChar
-}
 
 
 async function impl(exeCtx: ExecutionContext) {
@@ -33,81 +22,6 @@ async function impl(exeCtx: ExecutionContext) {
         return ret;
     }
 
-    const outlineCmds = async () => {
-        let fn: Fntype | null = null;
-        const args: any[] = [];
-        if (uinputs.length === 0) {
-            fn = Outline;
-            // await Outline(exeCtx);
-        } else {
-            console.log("uintpus=", uinputs)
-            const cmdStr = uinputs[0].trim()
-
-            switch (cmdStr) {
-                case 'expand':
-                case 'char':
-                case 'story':
-                    if (uinputs.length < 2) {
-                        exeCtx.response = "命令错误，缺少数量．"
-                        return;
-                    }
-                    const num = parseInt(uinputs[1]);
-                    if (!isNumber(num)) {
-                        exeCtx.response = "命令错误，缺少数量．"
-                        return;
-                    }
-                    uinputs.shift();
-                    uinputs.shift();
-                    exeCtx.input.content.content = uinputs.join(' ').trim();
-                    fn = OutlineCmds[cmdStr]
-                    args.push(num);
-                    break;
-                default:
-                    fn = Outline;
-            }
-        }
-        if (fn) {
-            return await fn(exeCtx, args);
-        }
-    }
-
-    const charCmds = async () => {
-        let fn: Fntype | null = null;
-        const args: any[] = [];
-        if (uinputs.length === 0) {
-            fn = Outline;
-            // await Outline(exeCtx);
-        } else {
-            console.log("uintpus=", uinputs)
-            const cmdStr = uinputs[0].trim()
-
-            switch (cmdStr) {
-                case 'add':
-                    if (uinputs.length < 2) {
-                        exeCtx.response = "命令错误，缺少数量．"
-                        return;
-                    }
-                    const num = parseInt(uinputs[1]);
-                    if (!isNumber(num)) {
-                        exeCtx.response = "命令错误，缺少数量．"
-                        return;
-                    }
-                    uinputs.shift();
-                    uinputs.shift();
-                    exeCtx.input.content.content = uinputs.join(' ').trim();
-                    fn = CharCmds[cmdStr]
-                    args.push(num);
-                    break;
-                default:
-                    fn = Outline;
-            }
-        }
-        if (fn) {
-            return await fn(exeCtx, args);
-        }
-    }
-
-
     const common = Common.inst(exeCtx);
 
     switch (uinputs[0]) {
@@ -119,11 +33,15 @@ async function impl(exeCtx: ExecutionContext) {
             return chkAndExit("世界设定");
         case '/outline':
             setUinput();
-            await outlineCmds();
+            await outlineCmds(exeCtx, uinputs);
             return '_exit';
         case '/char':
             setUinput();
-            await charCmds();
+            await charCmds(exeCtx, uinputs);
+            return '_exit';
+        case '/plot':
+            setUinput();
+            await plotCmds(exeCtx, uinputs);
             return '_exit';
         default:
             console.log("return uinpts[0]:", uinputs[0])
