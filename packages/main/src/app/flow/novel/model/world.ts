@@ -31,24 +31,43 @@ class 内在制约 {
 };
 
 
-class Character {
-    // 角色名: arrayn[]
-    private 情感与关系: 内在制约 = {
-    }
-
+type Character = {
+    姓名: string;
+    出生: string;
+    性格: string;
+    外貌: Record<string, string>;
+    人际关系: Record<string, string>;
+    所属势力: string;
 };
 
 
 
-class Characters extends BaseModel {
-    static key = "Characters";
-    static basePath = "characters"
+export class World extends BaseModel {
+    static key = "World";
+    static basePath = "world"
 
     // 主题轴线数组。
     @refprop("characters", [])
     characters!: Character[]
 
     // 主角
+
     @refprop("major", {})
     major!: Character
+
+    findChar(name: string): Character | undefined {
+        const chars = this.characters
+        return chars.find(item => item.姓名 === name);
+    }
+
+    addChar(character: Character) {
+        const oldChar = this.findChar(character.姓名);
+        if (oldChar) {
+            Object.assign(oldChar, character)
+        } else {
+            const chars = this.characters;
+            chars.push(character);
+            this.characters = chars;
+        }
+    }
 }
